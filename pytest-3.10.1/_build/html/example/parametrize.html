@@ -1,0 +1,657 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Parametrizing tests &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Working with custom markers" href="markers.html" />
+    <link rel="prev" title="Basic patterns and examples" href="simple.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="markers.html" title="Working with custom markers"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="simple.html" title="Basic patterns and examples"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="parametrizing-tests">
+<span id="paramexamples"></span><h1>Parametrizing tests<a class="headerlink" href="#parametrizing-tests" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">pytest</span></code> allows to easily parametrize test functions.
+For basic docs, see <a class="reference internal" href="../parametrize.html#parametrize-basics"><span class="std std-ref">Parametrizing fixtures and test functions</span></a>.</p>
+<p>In the following we provide some examples using
+the builtin mechanisms.</p>
+<div class="section" id="generating-parameters-combinations-depending-on-command-line">
+<h2>Generating parameters combinations, depending on command line<a class="headerlink" href="#generating-parameters-combinations-depending-on-command-line" title="Permalink to this headline">¶</a></h2>
+<p>Let’s say we want to execute a test with different computation
+parameters and the parameter range shall be determined by a command
+line argument.  Let’s first write a simple (do-nothing) computation test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_compute.py</span>
+
+<span class="k">def</span> <span class="nf">test_compute</span><span class="p">(</span><span class="n">param1</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">param1</span> <span class="o">&lt;</span> <span class="mi">4</span>
+</pre></div>
+</div>
+<p>Now we add a test configuration like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span><span class="s2">&quot;--all&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;run all combinations&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">pytest_generate_tests</span><span class="p">(</span><span class="n">metafunc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;param1&#39;</span> <span class="ow">in</span> <span class="n">metafunc</span><span class="o">.</span><span class="n">fixturenames</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">metafunc</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">getoption</span><span class="p">(</span><span class="s1">&#39;all&#39;</span><span class="p">):</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="mi">5</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="mi">2</span>
+        <span class="n">metafunc</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;param1&quot;</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="n">end</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>This means that we only run 2 tests if we do not pass <code class="docutils literal notranslate"><span class="pre">--all</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q test_compute.py
+..                                                                   [100%]
+2 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>We run only two computations, so we see two dots.
+let’s run the full monty:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q --all
+....F                                                                [100%]
+================================= FAILURES =================================
+_____________________________ test_compute[4] ______________________________
+
+param1 = 4
+
+    def test_compute(param1):
+&gt;       assert param1 &lt; 4
+E       assert 4 &lt; 4
+
+test_compute.py:3: AssertionError
+1 failed, 4 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>As expected when running the full range of <code class="docutils literal notranslate"><span class="pre">param1</span></code> values
+we’ll get an error on the last one.</p>
+</div>
+<div class="section" id="different-options-for-test-ids">
+<h2>Different options for test IDs<a class="headerlink" href="#different-options-for-test-ids" title="Permalink to this headline">¶</a></h2>
+<p>pytest will build a string that is the test ID for each set of values in a
+parametrized test. These IDs can be used with <code class="docutils literal notranslate"><span class="pre">-k</span></code> to select specific cases
+to run, and they will also identify the specific case when one is failing.
+Running pytest with <code class="docutils literal notranslate"><span class="pre">--collect-only</span></code> will show the generated IDs.</p>
+<p>Numbers, strings, booleans and None will have their usual string representation
+used in the test ID. For other objects, pytest will make a string based on
+the argument name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_time.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="n">testdata</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">timedelta</span><span class="p">(</span><span class="mi">1</span><span class="p">)),</span>
+    <span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">timedelta</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+<span class="p">]</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;a,b,expected&quot;</span><span class="p">,</span> <span class="n">testdata</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_timedistance_v0</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+    <span class="k">assert</span> <span class="n">diff</span> <span class="o">==</span> <span class="n">expected</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;a,b,expected&quot;</span><span class="p">,</span> <span class="n">testdata</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;forward&quot;</span><span class="p">,</span> <span class="s2">&quot;backward&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_timedistance_v1</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+    <span class="k">assert</span> <span class="n">diff</span> <span class="o">==</span> <span class="n">expected</span>
+
+
+<span class="k">def</span> <span class="nf">idfn</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="p">(</span><span class="n">datetime</span><span class="p">,)):</span>
+        <span class="c1"># note this wouldn&#39;t show any hours/minutes/seconds</span>
+        <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;a,b,expected&quot;</span><span class="p">,</span> <span class="n">testdata</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="n">idfn</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_timedistance_v2</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+    <span class="k">assert</span> <span class="n">diff</span> <span class="o">==</span> <span class="n">expected</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;a,b,expected&quot;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span>
+                 <span class="n">timedelta</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;forward&#39;</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">11</span><span class="p">),</span> <span class="n">datetime</span><span class="p">(</span><span class="mi">2001</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">12</span><span class="p">),</span>
+                 <span class="n">timedelta</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;backward&#39;</span><span class="p">),</span>
+<span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_timedistance_v3</span><span class="p">(</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="n">diff</span> <span class="o">=</span> <span class="n">a</span> <span class="o">-</span> <span class="n">b</span>
+    <span class="k">assert</span> <span class="n">diff</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>In <code class="docutils literal notranslate"><span class="pre">test_timedistance_v0</span></code>, we let pytest generate the test IDs.</p>
+<p>In <code class="docutils literal notranslate"><span class="pre">test_timedistance_v1</span></code>, we specified <code class="docutils literal notranslate"><span class="pre">ids</span></code> as a list of strings which were
+used as the test IDs. These are succinct, but can be a pain to maintain.</p>
+<p>In <code class="docutils literal notranslate"><span class="pre">test_timedistance_v2</span></code>, we specified <code class="docutils literal notranslate"><span class="pre">ids</span></code> as a function that can generate a
+string representation to make part of the test ID. So our <code class="docutils literal notranslate"><span class="pre">datetime</span></code> values use the
+label generated by <code class="docutils literal notranslate"><span class="pre">idfn</span></code>, but because we didn’t generate a label for <code class="docutils literal notranslate"><span class="pre">timedelta</span></code>
+objects, they are still using the default pytest representation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_time.py --collect-only
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 8 items
+&lt;Module &#39;test_time.py&#39;&gt;
+  &lt;Function &#39;test_timedistance_v0[a0-b0-expected0]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v0[a1-b1-expected1]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v1[forward]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v1[backward]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v2[20011212-20011211-expected0]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v2[20011211-20011212-expected1]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v3[forward]&#39;&gt;
+  &lt;Function &#39;test_timedistance_v3[backward]&#39;&gt;
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>In <code class="docutils literal notranslate"><span class="pre">test_timedistance_v3</span></code>, we used <code class="docutils literal notranslate"><span class="pre">pytest.param</span></code> to specify the test IDs
+together with the actual data, instead of listing them separately.</p>
+</div>
+<div class="section" id="a-quick-port-of-testscenarios">
+<h2>A quick port of “testscenarios”<a class="headerlink" href="#a-quick-port-of-testscenarios" title="Permalink to this headline">¶</a></h2>
+<p>Here is a quick port to run tests configured with <a class="reference external" href="https://pypi.org/project/testscenarios/">test scenarios</a>,
+an add-on from Robert Collins for the standard unittest framework. We
+only have to work a bit to construct the correct arguments for pytest’s
+<a class="reference internal" href="../reference.html#_pytest.python.Metafunc.parametrize" title="_pytest.python.Metafunc.parametrize"><code class="xref py py-func docutils literal notranslate"><span class="pre">Metafunc.parametrize()</span></code></a>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_scenarios.py</span>
+
+<span class="k">def</span> <span class="nf">pytest_generate_tests</span><span class="p">(</span><span class="n">metafunc</span><span class="p">):</span>
+    <span class="n">idlist</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">argvalues</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">scenario</span> <span class="ow">in</span> <span class="n">metafunc</span><span class="o">.</span><span class="n">cls</span><span class="o">.</span><span class="n">scenarios</span><span class="p">:</span>
+        <span class="n">idlist</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">scenario</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">items</span> <span class="o">=</span> <span class="n">scenario</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="n">argnames</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]</span>
+        <span class="n">argvalues</span><span class="o">.</span><span class="n">append</span><span class="p">(([</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">items</span><span class="p">]))</span>
+    <span class="n">metafunc</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="n">argnames</span><span class="p">,</span> <span class="n">argvalues</span><span class="p">,</span> <span class="n">ids</span><span class="o">=</span><span class="n">idlist</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;class&quot;</span><span class="p">)</span>
+
+<span class="n">scenario1</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;basic&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;attribute&#39;</span><span class="p">:</span> <span class="s1">&#39;value&#39;</span><span class="p">})</span>
+<span class="n">scenario2</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;advanced&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;attribute&#39;</span><span class="p">:</span> <span class="s1">&#39;value2&#39;</span><span class="p">})</span>
+
+<span class="k">class</span> <span class="nc">TestSampleWithScenarios</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">scenarios</span> <span class="o">=</span> <span class="p">[</span><span class="n">scenario1</span><span class="p">,</span> <span class="n">scenario2</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">test_demo1</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">test_demo2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">attribute</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>this is a fully self-contained example which you can run with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_scenarios.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items
+
+test_scenarios.py ....                                               [100%]
+
+========================= 4 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>If you just collect tests you’ll also nicely see ‘advanced’ and ‘basic’ as variants for the test function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --collect-only test_scenarios.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items
+&lt;Module &#39;test_scenarios.py&#39;&gt;
+  &lt;Class &#39;TestSampleWithScenarios&#39;&gt;
+    &lt;Instance &#39;()&#39;&gt;
+      &lt;Function &#39;test_demo1[basic]&#39;&gt;
+      &lt;Function &#39;test_demo2[basic]&#39;&gt;
+      &lt;Function &#39;test_demo1[advanced]&#39;&gt;
+      &lt;Function &#39;test_demo2[advanced]&#39;&gt;
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>Note that we told <code class="docutils literal notranslate"><span class="pre">metafunc.parametrize()</span></code> that your scenario values
+should be considered class-scoped.  With pytest-2.3 this leads to a
+resource-based ordering.</p>
+</div>
+<div class="section" id="deferring-the-setup-of-parametrized-resources">
+<h2>Deferring the setup of parametrized resources<a class="headerlink" href="#deferring-the-setup-of-parametrized-resources" title="Permalink to this headline">¶</a></h2>
+<p>The parametrization of test functions happens at collection
+time.  It is a good idea to setup expensive resources like DB
+connections or subprocess only when the actual test is run.
+Here is a simple example how you can achieve that, first
+the actual test requiring a <code class="docutils literal notranslate"><span class="pre">db</span></code> object:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_backends.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="k">def</span> <span class="nf">test_db_initialized</span><span class="p">(</span><span class="n">db</span><span class="p">):</span>
+    <span class="c1"># a dummy test</span>
+    <span class="k">if</span> <span class="n">db</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">&quot;DB2&quot;</span><span class="p">:</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;deliberately failing for demo purposes&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now add a test configuration that generates two invocations of
+the <code class="docutils literal notranslate"><span class="pre">test_db_initialized</span></code> function and also implements a factory that
+creates a database object for the actual test invocations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="k">def</span> <span class="nf">pytest_generate_tests</span><span class="p">(</span><span class="n">metafunc</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;db&#39;</span> <span class="ow">in</span> <span class="n">metafunc</span><span class="o">.</span><span class="n">fixturenames</span><span class="p">:</span>
+        <span class="n">metafunc</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;db&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s1">&#39;d1&#39;</span><span class="p">,</span> <span class="s1">&#39;d2&#39;</span><span class="p">],</span> <span class="n">indirect</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">class</span> <span class="nc">DB1</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s2">&quot;one database object&quot;</span>
+<span class="k">class</span> <span class="nc">DB2</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="s2">&quot;alternative database object&quot;</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">==</span> <span class="s2">&quot;d1&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">DB1</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">==</span> <span class="s2">&quot;d2&quot;</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">DB2</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;invalid internal test config&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let’s first see how it looks like at collection time:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_backends.py --collect-only
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+&lt;Module &#39;test_backends.py&#39;&gt;
+  &lt;Function &#39;test_db_initialized[d1]&#39;&gt;
+  &lt;Function &#39;test_db_initialized[d2]&#39;&gt;
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>And then when we run the test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q test_backends.py
+.F                                                                   [100%]
+================================= FAILURES =================================
+_________________________ test_db_initialized[d2] __________________________
+
+db = &lt;conftest.DB2 object at 0xdeadbeef&gt;
+
+    def test_db_initialized(db):
+        # a dummy test
+        if db.__class__.__name__ == &quot;DB2&quot;:
+&gt;           pytest.fail(&quot;deliberately failing for demo purposes&quot;)
+E           Failed: deliberately failing for demo purposes
+
+test_backends.py:6: Failed
+1 failed, 1 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>The first invocation with <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">==</span> <span class="pre">&quot;DB1&quot;</span></code> passed while the second with <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">==</span> <span class="pre">&quot;DB2&quot;</span></code> failed.  Our <code class="docutils literal notranslate"><span class="pre">db</span></code> fixture function has instantiated each of the DB values during the setup phase while the <code class="docutils literal notranslate"><span class="pre">pytest_generate_tests</span></code> generated two according calls to the <code class="docutils literal notranslate"><span class="pre">test_db_initialized</span></code> during the collection phase.</p>
+</div>
+<div class="section" id="apply-indirect-on-particular-arguments">
+<h2>Apply indirect on particular arguments<a class="headerlink" href="#apply-indirect-on-particular-arguments" title="Permalink to this headline">¶</a></h2>
+<p>Very often parametrization uses more than one argument name. There is opportunity to apply <code class="docutils literal notranslate"><span class="pre">indirect</span></code>
+parameter on particular arguments. It can be done by passing list or tuple of
+arguments’ names to <code class="docutils literal notranslate"><span class="pre">indirect</span></code>. In the example below there is a function <code class="docutils literal notranslate"><span class="pre">test_indirect</span></code> which uses
+two fixtures: <code class="docutils literal notranslate"><span class="pre">x</span></code> and <code class="docutils literal notranslate"><span class="pre">y</span></code>. Here we give to indirect the list, which contains the name of the
+fixture <code class="docutils literal notranslate"><span class="pre">x</span></code>. The indirect parameter will be applied to this argument only, and the value <code class="docutils literal notranslate"><span class="pre">a</span></code>
+will be passed to respective fixture function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_indirect_list.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s1">&#39;function&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">x</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">*</span> <span class="mi">3</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s1">&#39;function&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">y</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">*</span> <span class="mi">2</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s1">&#39;x, y&#39;</span><span class="p">,</span> <span class="p">[(</span><span class="s1">&#39;a&#39;</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">)],</span> <span class="n">indirect</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_indirect</span><span class="p">(</span><span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">x</span> <span class="o">==</span> <span class="s1">&#39;aaa&#39;</span>
+    <span class="k">assert</span> <span class="n">y</span> <span class="o">==</span> <span class="s1">&#39;b&#39;</span>
+</pre></div>
+</div>
+<p>The result of this test will be successful:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_indirect_list.py --collect-only
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+&lt;Module &#39;test_indirect_list.py&#39;&gt;
+  &lt;Function &#39;test_indirect[a-b]&#39;&gt;
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+</div>
+<div class="section" id="parametrizing-test-methods-through-per-class-configuration">
+<h2>Parametrizing test methods through per-class configuration<a class="headerlink" href="#parametrizing-test-methods-through-per-class-configuration" title="Permalink to this headline">¶</a></h2>
+<p>Here is an example <code class="docutils literal notranslate"><span class="pre">pytest_generate_tests</span></code> function implementing a
+parametrization scheme similar to Michael Foord’s <a class="reference external" href="https://github.com/testing-cabal/unittest-ext/blob/master/params.py">unittest
+parametrizer</a> but in a lot less code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of ./test_parametrize.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="k">def</span> <span class="nf">pytest_generate_tests</span><span class="p">(</span><span class="n">metafunc</span><span class="p">):</span>
+    <span class="c1"># called once per each test function</span>
+    <span class="n">funcarglist</span> <span class="o">=</span> <span class="n">metafunc</span><span class="o">.</span><span class="n">cls</span><span class="o">.</span><span class="n">params</span><span class="p">[</span><span class="n">metafunc</span><span class="o">.</span><span class="n">function</span><span class="o">.</span><span class="vm">__name__</span><span class="p">]</span>
+    <span class="n">argnames</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">funcarglist</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">metafunc</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="n">argnames</span><span class="p">,</span> <span class="p">[[</span><span class="n">funcargs</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">argnames</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">funcargs</span> <span class="ow">in</span> <span class="n">funcarglist</span><span class="p">])</span>
+
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="c1"># a map specifying multiple argument sets for a test method</span>
+    <span class="n">params</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;test_equals&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span> <span class="nb">dict</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span> <span class="p">],</span>
+        <span class="s1">&#39;test_zerodivision&#39;</span><span class="p">:</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">a</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">b</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="p">],</span>
+    <span class="p">}</span>
+
+    <span class="k">def</span> <span class="nf">test_equals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">a</span> <span class="o">==</span> <span class="n">b</span>
+
+    <span class="k">def</span> <span class="nf">test_zerodivision</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">):</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">raises</span><span class="p">(</span><span class="ne">ZeroDivisionError</span><span class="p">,</span> <span class="s2">&quot;a/b&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Our test generator looks up a class-level definition which specifies which
+argument sets to use for each test function.  Let’s run it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q
+F..                                                                  [100%]
+================================= FAILURES =================================
+________________________ TestClass.test_equals[1-2] ________________________
+
+self = &lt;test_parametrize.TestClass object at 0xdeadbeef&gt;, a = 1, b = 2
+
+    def test_equals(self, a, b):
+&gt;       assert a == b
+E       assert 1 == 2
+
+test_parametrize.py:18: AssertionError
+1 failed, 2 passed in 0.12 seconds
+</pre></div>
+</div>
+</div>
+<div class="section" id="indirect-parametrization-with-multiple-fixtures">
+<h2>Indirect parametrization with multiple fixtures<a class="headerlink" href="#indirect-parametrization-with-multiple-fixtures" title="Permalink to this headline">¶</a></h2>
+<p>Here is a stripped down real-life example of using parametrized
+testing for testing serialization of objects between different python
+interpreters.  We define a <code class="docutils literal notranslate"><span class="pre">test_basic_objects</span></code> function which
+is to be run with different sets of arguments for its three arguments:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">python1</span></code>: first python interpreter, run to pickle-dump an object to a file</li>
+<li><code class="docutils literal notranslate"><span class="pre">python2</span></code>: second interpreter, run to pickle-load an object from a file</li>
+<li><code class="docutils literal notranslate"><span class="pre">obj</span></code>: object to be dumped/loaded</li>
+</ul>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">module containing a parametrized tests testing cross-python</span>
+<span class="sd">serialization via the pickle module.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">textwrap</span>
+
+<span class="kn">import</span> <span class="nn">py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="n">pythonlist</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;python2.7&quot;</span><span class="p">,</span> <span class="s2">&quot;python3.4&quot;</span><span class="p">,</span> <span class="s2">&quot;python3.5&quot;</span><span class="p">]</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">pythonlist</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">python1</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">tmpdir</span><span class="p">):</span>
+    <span class="n">picklefile</span> <span class="o">=</span> <span class="n">tmpdir</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;data.pickle&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">Python</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">param</span><span class="p">,</span> <span class="n">picklefile</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="n">pythonlist</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">python2</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">python1</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">Python</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">param</span><span class="p">,</span> <span class="n">python1</span><span class="o">.</span><span class="n">picklefile</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Python</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">version</span><span class="p">,</span> <span class="n">picklefile</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pythonpath</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="o">.</span><span class="n">sysfind</span><span class="p">(</span><span class="n">version</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">pythonpath</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{!r}</span><span class="s2"> not found&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">version</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">picklefile</span> <span class="o">=</span> <span class="n">picklefile</span>
+
+    <span class="k">def</span> <span class="nf">dumps</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="n">dumpfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picklefile</span><span class="o">.</span><span class="n">dirpath</span><span class="p">(</span><span class="s2">&quot;dump.py&quot;</span><span class="p">)</span>
+        <span class="n">dumpfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+                <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                import pickle</span>
+<span class="sd">                f = open({!r}, &#39;wb&#39;)</span>
+<span class="sd">                s = pickle.dump({!r}, f, protocol=2)</span>
+<span class="sd">                f.close()</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">picklefile</span><span class="p">),</span> <span class="n">obj</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">py</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">cmdexec</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pythonpath</span><span class="p">,</span> <span class="n">dumpfile</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">load_and_is_true</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expression</span><span class="p">):</span>
+        <span class="n">loadfile</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">picklefile</span><span class="o">.</span><span class="n">dirpath</span><span class="p">(</span><span class="s2">&quot;load.py&quot;</span><span class="p">)</span>
+        <span class="n">loadfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="n">textwrap</span><span class="o">.</span><span class="n">dedent</span><span class="p">(</span>
+                <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                import pickle</span>
+<span class="sd">                f = open({!r}, &#39;rb&#39;)</span>
+<span class="sd">                obj = pickle.load(f)</span>
+<span class="sd">                f.close()</span>
+<span class="sd">                res = eval({!r})</span>
+<span class="sd">                if not res:</span>
+<span class="sd">                    raise SystemExit(1)</span>
+<span class="sd">                &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">picklefile</span><span class="p">),</span> <span class="n">expression</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">loadfile</span><span class="p">)</span>
+        <span class="n">py</span><span class="o">.</span><span class="n">process</span><span class="o">.</span><span class="n">cmdexec</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">pythonpath</span><span class="p">,</span> <span class="n">loadfile</span><span class="p">))</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="p">[</span><span class="mi">42</span><span class="p">,</span> <span class="p">{},</span> <span class="p">{</span><span class="mi">1</span><span class="p">:</span> <span class="mi">3</span><span class="p">}])</span>
+<span class="k">def</span> <span class="nf">test_basic_objects</span><span class="p">(</span><span class="n">python1</span><span class="p">,</span> <span class="n">python2</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+    <span class="n">python1</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="n">python2</span><span class="o">.</span><span class="n">load_and_is_true</span><span class="p">(</span><span class="s2">&quot;obj == </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">obj</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Running it results in some skips if we don’t have all the python interpreters installed and otherwise runs all combinations (5 interpreters times 5 interpreters times 3 objects to serialize/deserialize):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>. $ pytest -rs -q multipython.py
+...sss...sssssssss...sss...                                          [100%]
+========================= short test summary info ==========================
+SKIP [15] $REGENDOC_TMPDIR/CWD/multipython.py:30: &#39;python3.4&#39; not found
+12 passed, 15 skipped in 0.12 seconds
+</pre></div>
+</div>
+</div>
+<div class="section" id="indirect-parametrization-of-optional-implementations-imports">
+<h2>Indirect parametrization of optional implementations/imports<a class="headerlink" href="#indirect-parametrization-of-optional-implementations-imports" title="Permalink to this headline">¶</a></h2>
+<p>If you want to compare the outcomes of several implementations of a given
+API, you can write test functions that receive the already imported implementations
+and get skipped in case the implementation is not importable/available.  Let’s
+say we have a “base” implementation and the other (possibly optimized ones)
+need to provide similar results:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">basemod</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pytest</span><span class="o">.</span><span class="n">importorskip</span><span class="p">(</span><span class="s2">&quot;base&quot;</span><span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;opt1&quot;</span><span class="p">,</span> <span class="s2">&quot;opt2&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">optmod</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">pytest</span><span class="o">.</span><span class="n">importorskip</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">param</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>And then a base implementation of a simple function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of base.py</span>
+<span class="k">def</span> <span class="nf">func1</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>And an optimized version:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of opt1.py</span>
+<span class="k">def</span> <span class="nf">func1</span><span class="p">():</span>
+    <span class="k">return</span> <span class="mf">1.0001</span>
+</pre></div>
+</div>
+<p>And finally a little test module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+
+<span class="k">def</span> <span class="nf">test_func1</span><span class="p">(</span><span class="n">basemod</span><span class="p">,</span> <span class="n">optmod</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">round</span><span class="p">(</span><span class="n">basemod</span><span class="o">.</span><span class="n">func1</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="nb">round</span><span class="p">(</span><span class="n">optmod</span><span class="o">.</span><span class="n">func1</span><span class="p">(),</span> <span class="mi">3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you run this with reporting for skips enabled:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -rs test_module.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+
+test_module.py .s                                                    [100%]
+========================= short test summary info ==========================
+SKIP [1] $REGENDOC_TMPDIR/conftest.py:11: could not import &#39;opt2&#39;
+
+=================== 1 passed, 1 skipped in 0.12 seconds ====================
+</pre></div>
+</div>
+<p>You’ll see that we don’t have an <code class="docutils literal notranslate"><span class="pre">opt2</span></code> module and thus the second test run
+of our <code class="docutils literal notranslate"><span class="pre">test_func1</span></code> was skipped.  A few notes:</p>
+<ul class="simple">
+<li>the fixture functions in the <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file are “session-scoped” because we
+don’t need to import more than once</li>
+<li>if you have multiple test functions and a skipped import, you will see
+the <code class="docutils literal notranslate"><span class="pre">[1]</span></code> count increasing in the report</li>
+<li>you can put <a class="reference internal" href="../parametrize.html#pytest-mark-parametrize"><span class="std std-ref">&#64;pytest.mark.parametrize</span></a> style
+parametrization on the test functions to parametrize input/output
+values as well.</li>
+</ul>
+</div>
+<div class="section" id="set-marks-or-test-id-for-individual-parametrized-test">
+<h2>Set marks or test ID for individual parametrized test<a class="headerlink" href="#set-marks-or-test-id-for-individual-parametrized-test" title="Permalink to this headline">¶</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">pytest.param</span></code> to apply marks or set test ID to individual parametrized test.
+For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_pytest_param_example.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s1">&#39;test_input,expected&#39;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s1">&#39;3+5&#39;</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s1">&#39;1+7&#39;</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span>
+                 <span class="n">marks</span><span class="o">=</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">basic</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s1">&#39;2+4&#39;</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span>
+                 <span class="n">marks</span><span class="o">=</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">basic</span><span class="p">,</span>
+                 <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;basic_2+4&#39;</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="s1">&#39;6*9&#39;</span><span class="p">,</span> <span class="mi">42</span><span class="p">,</span>
+                 <span class="n">marks</span><span class="o">=</span><span class="p">[</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">basic</span><span class="p">,</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">xfail</span><span class="p">],</span>
+                 <span class="nb">id</span><span class="o">=</span><span class="s1">&#39;basic_6*9&#39;</span><span class="p">),</span>
+<span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_eval</span><span class="p">(</span><span class="n">test_input</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">eval</span><span class="p">(</span><span class="n">test_input</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>In this example, we have 4 parametrized tests. Except for the first test,
+we mark the rest three parametrized tests with the custom marker <code class="docutils literal notranslate"><span class="pre">basic</span></code>,
+and for the fourth test we also use the built-in mark <code class="docutils literal notranslate"><span class="pre">xfail</span></code> to indicate this
+test is expected to fail. For explicitness, we set test ids for some tests.</p>
+<p>Then run <code class="docutils literal notranslate"><span class="pre">pytest</span></code> with verbose mode and with only the <code class="docutils literal notranslate"><span class="pre">basic</span></code> marker:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>pytest -v -m basic
+============================================ test session starts =============================================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items
+
+test_pytest_param_example.py::test_eval[1+7-8] PASSED
+test_pytest_param_example.py::test_eval[basic_2+4] PASSED
+test_pytest_param_example.py::test_eval[basic_6*9] xfail
+========================================== short test summary info ===========================================
+XFAIL test_pytest_param_example.py::test_eval[basic_6*9]
+
+============================================= 1 tests deselected =============================================
+</pre></div>
+</div>
+<p>As the result:</p>
+<ul class="simple">
+<li>Four tests were collected</li>
+<li>One test was deselected because it doesn’t have the <code class="docutils literal notranslate"><span class="pre">basic</span></code> mark.</li>
+<li>Three tests with the <code class="docutils literal notranslate"><span class="pre">basic</span></code> mark was selected.</li>
+<li>The test <code class="docutils literal notranslate"><span class="pre">test_eval[1+7-8]</span></code> passed, but the name is autogenerated and confusing.</li>
+<li>The test <code class="docutils literal notranslate"><span class="pre">test_eval[basic_2+4]</span></code> passed.</li>
+<li>The test <code class="docutils literal notranslate"><span class="pre">test_eval[basic_6*9]</span></code> was expected to fail and did fail.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="markers.html" title="Working with custom markers"
+             >next</a></li>
+        <li class="right" >
+          <a href="simple.html" title="Basic patterns and examples"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

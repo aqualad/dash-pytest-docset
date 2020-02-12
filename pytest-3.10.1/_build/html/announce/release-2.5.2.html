@@ -1,0 +1,134 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.5.2: fixes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.5.1: fixes and new home page styling" href="release-2.5.1.html" />
+    <link rel="prev" title="pytest-2.6.0: shorter tracebacks, new warning system, test runner compat" href="release-2.6.0.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.5.1.html" title="pytest-2.5.1: fixes and new home page styling"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.6.0.html" title="pytest-2.6.0: shorter tracebacks, new warning system, test runner compat"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-5-2-fixes">
+<h1>pytest-2.5.2: fixes<a class="headerlink" href="#pytest-2-5-2-fixes" title="Permalink to this headline">¶</a></h1>
+<p>pytest is a mature Python testing tool with more than a 1000 tests
+against itself, passing on many different interpreters and platforms.</p>
+<p>The 2.5.2 release fixes a few bugs with two maybe-bugs remaining and
+actively being worked on (and waiting for the bug reporter’s input).
+We also have a new contribution guide thanks to Piotr Banaszkiewicz
+and others.</p>
+<p>See docs at:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>As usual, you can upgrade from pypi via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Thanks to the following people who contributed to this release:</p>
+<blockquote>
+<div>Anatoly Bubenkov
+Ronny Pfannschmidt
+Floris Bruynooghe
+Bruno Oliveira
+Andreas Pelme
+Jurko Gospodnetić
+Piotr Banaszkiewicz
+Simon Liedtke
+lakka
+Lukasz Balcerzak
+Philippe Muller
+Daniel Hahler</div></blockquote>
+<p>have fun,
+holger krekel</p>
+<div class="section" id="id1">
+<h2>2.5.2<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>fix issue409 – better interoperate with cx_freeze by not
+trying to import from collections.abc which causes problems
+for py27/cx_freeze.  Thanks Wolfgang L. for reporting and tracking it down.</li>
+<li>fixed docs and code to use “pytest” instead of “py.test” almost everywhere.
+Thanks Jurko Gospodnetic for the complete PR.</li>
+<li>fix issue425: mention at end of “py.test -h” that –markers
+and –fixtures work according to specified test path (or current dir)</li>
+<li>fix issue413: exceptions with unicode attributes are now printed
+correctly also on python2 and with pytest-xdist runs. (the fix
+requires py-1.4.20)</li>
+<li>copy, cleanup and integrate py.io capture
+from pylib 1.4.20.dev2 (rev 13d9af95547e)</li>
+<li>address issue416: clarify docs as to conftest.py loading semantics</li>
+<li>fix issue429: comparing byte strings with non-ascii chars in assert
+expressions now work better.  Thanks Floris Bruynooghe.</li>
+<li>make capfd/capsys.capture private, its unused and shouldn’t be exposed</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.5.1.html" title="pytest-2.5.1: fixes and new home page styling"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.6.0.html" title="pytest-2.6.0: shorter tracebacks, new warning system, test runner compat"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

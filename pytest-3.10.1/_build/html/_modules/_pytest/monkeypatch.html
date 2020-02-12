@@ -1,0 +1,376 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.monkeypatch &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.monkeypatch</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; monkeypatching and mocking functionality.  &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">contextmanager</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">_pytest.fixtures</span> <span class="kn">import</span> <span class="n">fixture</span>
+
+<span class="n">RE_IMPORT_ERROR_NAME</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s2">&quot;^No module named (.*)$&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="monkeypatch"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.monkeypatch">[docs]</a><span class="nd">@fixture</span>
+<span class="k">def</span> <span class="nf">monkeypatch</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;The returned ``monkeypatch`` fixture provides these</span>
+<span class="sd">    helper methods to modify objects, dictionaries or os.environ::</span>
+
+<span class="sd">        monkeypatch.setattr(obj, name, value, raising=True)</span>
+<span class="sd">        monkeypatch.delattr(obj, name, raising=True)</span>
+<span class="sd">        monkeypatch.setitem(mapping, name, value)</span>
+<span class="sd">        monkeypatch.delitem(obj, name, raising=True)</span>
+<span class="sd">        monkeypatch.setenv(name, value, prepend=False)</span>
+<span class="sd">        monkeypatch.delenv(name, raising=True)</span>
+<span class="sd">        monkeypatch.syspath_prepend(path)</span>
+<span class="sd">        monkeypatch.chdir(path)</span>
+
+<span class="sd">    All modifications will be undone after the requesting</span>
+<span class="sd">    test function or fixture has finished. The ``raising``</span>
+<span class="sd">    parameter determines if a KeyError or AttributeError</span>
+<span class="sd">    will be raised if the set/deletion operation has no target.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mpatch</span> <span class="o">=</span> <span class="n">MonkeyPatch</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">mpatch</span>
+    <span class="n">mpatch</span><span class="o">.</span><span class="n">undo</span><span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">resolve</span><span class="p">(</span><span class="n">name</span><span class="p">):</span>
+    <span class="c1"># simplified from zope.dottedname</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">)</span>
+
+    <span class="n">used</span> <span class="o">=</span> <span class="n">parts</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">used</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="n">parts</span><span class="p">:</span>
+        <span class="n">used</span> <span class="o">+=</span> <span class="s2">&quot;.&quot;</span> <span class="o">+</span> <span class="n">part</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">found</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">found</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">pass</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="c1"># we use explicit un-nesting of the handling block in order</span>
+        <span class="c1"># to avoid nested exceptions on python 3</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="nb">__import__</span><span class="p">(</span><span class="n">used</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ImportError</span> <span class="k">as</span> <span class="n">ex</span><span class="p">:</span>
+            <span class="c1"># str is used for py2 vs py3</span>
+            <span class="n">expected</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">ex</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">()[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">expected</span> <span class="o">==</span> <span class="n">used</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span><span class="s2">&quot;import error in </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">used</span><span class="p">,</span> <span class="n">ex</span><span class="p">))</span>
+        <span class="n">found</span> <span class="o">=</span> <span class="n">annotated_getattr</span><span class="p">(</span><span class="n">found</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">used</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">found</span>
+
+
+<span class="k">def</span> <span class="nf">annotated_getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">ann</span><span class="p">):</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="si">%r</span><span class="s2"> object at </span><span class="si">%s</span><span class="s2"> has no attribute </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="n">ann</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="k">def</span> <span class="nf">derive_importpath</span><span class="p">(</span><span class="n">import_path</span><span class="p">,</span> <span class="n">raising</span><span class="p">):</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">import_path</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">)</span> <span class="ow">or</span> <span class="s2">&quot;.&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">import_path</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;must be absolute import path string, not </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">import_path</span><span class="p">,))</span>
+    <span class="n">module</span><span class="p">,</span> <span class="n">attr</span> <span class="o">=</span> <span class="n">import_path</span><span class="o">.</span><span class="n">rsplit</span><span class="p">(</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">target</span> <span class="o">=</span> <span class="n">resolve</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">raising</span><span class="p">:</span>
+        <span class="n">annotated_getattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">attr</span><span class="p">,</span> <span class="n">ann</span><span class="o">=</span><span class="n">module</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">attr</span><span class="p">,</span> <span class="n">target</span>
+
+
+<span class="k">class</span> <span class="nc">Notset</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;notset&gt;&quot;</span>
+
+
+<span class="n">notset</span> <span class="o">=</span> <span class="n">Notset</span><span class="p">()</span>
+
+
+<div class="viewcode-block" id="MonkeyPatch"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch">[docs]</a><span class="k">class</span> <span class="nc">MonkeyPatch</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Object returned by the ``monkeypatch`` fixture keeping a record of setattr/item/env/syspath changes.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setattr</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setitem</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="MonkeyPatch.context"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.context">[docs]</a>    <span class="nd">@contextmanager</span>
+    <span class="k">def</span> <span class="nf">context</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Context manager that returns a new :class:`MonkeyPatch` object which</span>
+<span class="sd">        undoes any patching done inside the ``with`` block upon exit:</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            import functools</span>
+<span class="sd">            def test_partial(monkeypatch):</span>
+<span class="sd">                with monkeypatch.context() as m:</span>
+<span class="sd">                    m.setattr(functools, &quot;partial&quot;, 3)</span>
+
+<span class="sd">        Useful in situations where it is desired to undo some patches before the test ends,</span>
+<span class="sd">        such as mocking ``stdlib`` functions that might break pytest itself if mocked (for examples</span>
+<span class="sd">        of this see `#3290 &lt;https://github.com/pytest-dev/pytest/issues/3290&gt;`_.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">m</span> <span class="o">=</span> <span class="n">MonkeyPatch</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span> <span class="n">m</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="n">m</span><span class="o">.</span><span class="n">undo</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.setattr"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.setattr">[docs]</a>    <span class="k">def</span> <span class="nf">setattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">notset</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set attribute value on target, memorizing the old value.</span>
+<span class="sd">        By default raise AttributeError if the attribute did not exist.</span>
+
+<span class="sd">        For convenience you can specify a string as ``target`` which</span>
+<span class="sd">        will be interpreted as a dotted import path, with the last part</span>
+<span class="sd">        being the attribute name.  Example:</span>
+<span class="sd">        ``monkeypatch.setattr(&quot;os.getcwd&quot;, lambda: &quot;/&quot;)``</span>
+<span class="sd">        would set the ``getcwd`` function of the ``os`` module.</span>
+
+<span class="sd">        The ``raising`` value determines if the setattr should fail</span>
+<span class="sd">        if the attribute is not already present (defaults to True</span>
+<span class="sd">        which means it will raise).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="kn">import</span> <span class="nn">inspect</span>
+
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">notset</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;use setattr(target, name, value) or &quot;</span>
+                    <span class="s2">&quot;setattr(target, value) with target being a dotted &quot;</span>
+                    <span class="s2">&quot;import string&quot;</span>
+                <span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="n">derive_importpath</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">raising</span><span class="p">)</span>
+
+        <span class="n">oldval</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">notset</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">raising</span> <span class="ow">and</span> <span class="n">oldval</span> <span class="ow">is</span> <span class="n">notset</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2"> has no attribute </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">))</span>
+
+        <span class="c1"># avoid class descriptors like staticmethod/classmethod</span>
+        <span class="k">if</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">target</span><span class="p">):</span>
+            <span class="n">oldval</span> <span class="o">=</span> <span class="n">target</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">notset</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setattr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">oldval</span><span class="p">))</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.delattr"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.delattr">[docs]</a>    <span class="k">def</span> <span class="nf">delattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">notset</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Delete attribute ``name`` from ``target``, by default raise</span>
+<span class="sd">        AttributeError it the attribute did not previously exist.</span>
+
+<span class="sd">        If no ``name`` is specified and ``target`` is a string</span>
+<span class="sd">        it will be interpreted as a dotted import path with the</span>
+<span class="sd">        last part being the attribute name.</span>
+
+<span class="sd">        If ``raising`` is set to False, no exception will be raised if the</span>
+<span class="sd">        attribute is missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="n">notset</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="s2">&quot;use delattr(target, name) or &quot;</span>
+                    <span class="s2">&quot;delattr(target) with target being a dotted &quot;</span>
+                    <span class="s2">&quot;import string&quot;</span>
+                <span class="p">)</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">target</span> <span class="o">=</span> <span class="n">derive_importpath</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">raising</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">raising</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setattr</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">notset</span><span class="p">)))</span>
+            <span class="nb">delattr</span><span class="p">(</span><span class="n">target</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.setitem"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.setitem">[docs]</a>    <span class="k">def</span> <span class="nf">setitem</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dic</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set dictionary entry ``name`` to value. &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setitem</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dic</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">notset</span><span class="p">)))</span>
+        <span class="n">dic</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.delitem"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.delitem">[docs]</a>    <span class="k">def</span> <span class="nf">delitem</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dic</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Delete ``name`` from dict. Raise KeyError if it doesn&#39;t exist.</span>
+
+<span class="sd">        If ``raising`` is set to False, no exception will be raised if the</span>
+<span class="sd">        key is missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">name</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dic</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">raising</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_setitem</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">dic</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">dic</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">notset</span><span class="p">)))</span>
+            <span class="k">del</span> <span class="n">dic</span><span class="p">[</span><span class="n">name</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="nf">_warn_if_env_name_is_not_str</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;On Python 2, warn if the given environment variable name is not a native str (#4056)&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY2</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="n">pytest</span><span class="o">.</span><span class="n">PytestWarning</span><span class="p">(</span>
+                    <span class="s2">&quot;Environment variable name </span><span class="si">{!r}</span><span class="s2"> should be str&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="MonkeyPatch.setenv"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.setenv">[docs]</a>    <span class="k">def</span> <span class="nf">setenv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">prepend</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Set environment variable ``name`` to ``value``.  If ``prepend``</span>
+<span class="sd">        is a character, read the current environment variable value</span>
+<span class="sd">        and prepend the ``value`` adjoined with the ``prepend`` character.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                <span class="n">pytest</span><span class="o">.</span><span class="n">PytestWarning</span><span class="p">(</span>
+                    <span class="s2">&quot;Value of environment variable </span><span class="si">{name}</span><span class="s2"> type should be str, but got &quot;</span>
+                    <span class="s2">&quot;</span><span class="si">{value!r}</span><span class="s2"> (type: </span><span class="si">{type}</span><span class="s2">); converted to str implicitly&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                        <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span>
+                    <span class="p">)</span>
+                <span class="p">),</span>
+                <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prepend</span> <span class="ow">and</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">:</span>
+            <span class="n">value</span> <span class="o">=</span> <span class="n">value</span> <span class="o">+</span> <span class="n">prepend</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_if_env_name_is_not_str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setitem</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.delenv"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.delenv">[docs]</a>    <span class="k">def</span> <span class="nf">delenv</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Delete ``name`` from the environment. Raise KeyError if it does</span>
+<span class="sd">        not exist.</span>
+
+<span class="sd">        If ``raising`` is set to False, no exception will be raised if the</span>
+<span class="sd">        environment variable is missing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_warn_if_env_name_is_not_str</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">delitem</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="n">raising</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.syspath_prepend"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.syspath_prepend">[docs]</a>    <span class="k">def</span> <span class="nf">syspath_prepend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Prepend ``path`` to ``sys.path`` list of import locations. &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[:]</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.chdir"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.chdir">[docs]</a>    <span class="k">def</span> <span class="nf">chdir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Change the current working directory to the specified path.</span>
+<span class="sd">        Path can be a string or a py.path.local object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="s2">&quot;chdir&quot;</span><span class="p">):</span>
+            <span class="n">path</span><span class="o">.</span><span class="n">chdir</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="MonkeyPatch.undo"><a class="viewcode-back" href="../../reference.html#_pytest.monkeypatch.MonkeyPatch.undo">[docs]</a>    <span class="k">def</span> <span class="nf">undo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Undo previous changes.  This call consumes the</span>
+<span class="sd">        undo stack. Calling it a second time has no effect unless</span>
+<span class="sd">        you do more monkeypatching after the undo call.</span>
+
+<span class="sd">        There is generally no need to call `undo()`, since it is</span>
+<span class="sd">        called automatically during tear-down.</span>
+
+<span class="sd">        Note that the same `monkeypatch` fixture is used across a</span>
+<span class="sd">        single test function invocation. If `monkeypatch` is used both by</span>
+<span class="sd">        the test function itself and one of the test fixtures,</span>
+<span class="sd">        calling `undo()` will undo all of the changes made in</span>
+<span class="sd">        both functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_setattr</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="n">notset</span><span class="p">:</span>
+                <span class="nb">setattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="nb">delattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setattr</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">dictionary</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_setitem</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="n">notset</span><span class="p">:</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="k">del</span> <span class="n">dictionary</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">pass</span>  <span class="c1"># was already deleted, so we have the desired state</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">dictionary</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">value</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_setitem</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_savesyspath</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">chdir</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cwd</span> <span class="o">=</span> <span class="kc">None</span></div></div>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

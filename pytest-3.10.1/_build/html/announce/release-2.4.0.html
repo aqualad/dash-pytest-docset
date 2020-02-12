@@ -1,0 +1,266 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.4.0: new fixture features/hooks and bug fixes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.3.5: bug fixes and little improvements" href="release-2.3.5.html" />
+    <link rel="prev" title="pytest-2.4.1: fixing three regressions compared to 2.3.5" href="release-2.4.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.3.5.html" title="pytest-2.3.5: bug fixes and little improvements"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.4.1.html" title="pytest-2.4.1: fixing three regressions compared to 2.3.5"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-4-0-new-fixture-features-hooks-and-bug-fixes">
+<h1>pytest-2.4.0: new fixture features/hooks and bug fixes<a class="headerlink" href="#pytest-2-4-0-new-fixture-features-hooks-and-bug-fixes" title="Permalink to this headline">¶</a></h1>
+<p>The just released pytest-2.4.0 brings many improvements and numerous
+bug fixes while remaining plugin- and test-suite compatible apart
+from a few supposedly very minor incompatibilities.  See below for
+a full list of details.  A few feature highlights:</p>
+<ul class="simple">
+<li>new yield-style fixtures <a class="reference external" href="http://pytest.org/latest/yieldfixture.html">pytest.yield_fixture</a>, allowing to use
+existing with-style context managers in fixture functions.</li>
+<li>improved pdb support: <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">pdb</span> <span class="pre">;</span> <span class="pre">pdb.set_trace()</span></code> now works
+without requiring prior disabling of stdout/stderr capturing.
+Also the <code class="docutils literal notranslate"><span class="pre">--pdb</span></code> options works now on collection and internal errors
+and we introduced a new experimental hook for IDEs/plugins to
+intercept debugging: <code class="docutils literal notranslate"><span class="pre">pytest_exception_interact(node,</span> <span class="pre">call,</span> <span class="pre">report)</span></code>.</li>
+<li>shorter monkeypatch variant to allow specifying an import path as
+a target, for example: <code class="docutils literal notranslate"><span class="pre">monkeypatch.setattr(&quot;requests.get&quot;,</span> <span class="pre">myfunc)</span></code></li>
+<li>better unittest/nose compatibility: all teardown methods are now only
+called if the corresponding setup method succeeded.</li>
+<li>integrate tab-completion on command line options if you
+have <a class="reference external" href="https://pypi.org/project/argcomplete/">argcomplete</a>
+configured.</li>
+<li>allow boolean expression directly with skipif/xfail
+if a “reason” is also specified.</li>
+<li>a new hook <code class="docutils literal notranslate"><span class="pre">pytest_load_initial_conftests</span></code> allows plugins like
+<a class="reference external" href="https://pypi.org/project/pytest-django/">pytest-django</a> to
+influence the environment before conftest files import <code class="docutils literal notranslate"><span class="pre">django</span></code>.</li>
+<li>reporting: color the last line red or green depending if
+failures/errors occurred or everything passed.</li>
+</ul>
+<p>The documentation has been updated to accommodate the changes,
+see <a class="reference external" href="http://pytest.org">http://pytest.org</a></p>
+<p>To install or upgrade pytest:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span> <span class="c1"># or</span>
+<span class="n">easy_install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p><strong>Many thanks to all who helped, including Floris Bruynooghe,
+Brianna Laugher, Andreas Pelme, Anthon van der Neut, Anatoly Bubenkoff,
+Vladimir Keleshev, Mathieu Agopian, Ronny Pfannschmidt, Christian
+Theunert and many others.</strong></p>
+<p>may passing tests be with you,</p>
+<p>holger krekel</p>
+<div class="section" id="changes-between-2-3-5-and-2-4">
+<h2>Changes between 2.3.5 and 2.4<a class="headerlink" href="#changes-between-2-3-5-and-2-4" title="Permalink to this headline">¶</a></h2>
+<p>known incompatibilities:</p>
+<ul class="simple">
+<li>if calling –genscript from python2.7 or above, you only get a
+standalone script which works on python2.7 or above.  Use Python2.6
+to also get a python2.5 compatible version.</li>
+<li>all xunit-style teardown methods (nose-style, pytest-style,
+unittest-style) will not be called if the corresponding setup method failed,
+see issue322 below.</li>
+<li>the pytest_plugin_unregister hook wasn’t ever properly called
+and there is no known implementation of the hook - so it got removed.</li>
+<li>pytest.fixture-decorated functions cannot be generators (i.e. use
+yield) anymore.  This change might be reversed in 2.4.1 if it causes
+unforeseen real-life issues.  However, you can always write and return
+an inner function/generator and change the fixture consumer to iterate
+over the returned generator.  This change was done in lieu of the new
+<code class="docutils literal notranslate"><span class="pre">pytest.yield_fixture</span></code> decorator, see below.</li>
+</ul>
+<p>new features:</p>
+<ul>
+<li><p class="first">experimentally introduce a new <code class="docutils literal notranslate"><span class="pre">pytest.yield_fixture</span></code> decorator
+which accepts exactly the same parameters as pytest.fixture but
+mandates a <code class="docutils literal notranslate"><span class="pre">yield</span></code> statement instead of a <code class="docutils literal notranslate"><span class="pre">return</span> <span class="pre">statement</span></code> from
+fixture functions.  This allows direct integration with “with-style”
+context managers in fixture functions and generally avoids registering
+of finalization callbacks in favour of treating the “after-yield” as
+teardown code.  Thanks Andreas Pelme, Vladimir Keleshev, Floris
+Bruynooghe, Ronny Pfannschmidt and many others for discussions.</p>
+</li>
+<li><p class="first">allow boolean expression directly with skipif/xfail
+if a “reason” is also specified.  Rework skipping documentation
+to recommend “condition as booleans” because it prevents surprises
+when importing markers between modules.  Specifying conditions
+as strings will remain fully supported.</p>
+</li>
+<li><p class="first">reporting: color the last line red or green depending if
+failures/errors occurred or everything passed.  thanks Christian
+Theunert.</p>
+</li>
+<li><p class="first">make “import pdb ; pdb.set_trace()” work natively wrt capturing (no
+“-s” needed anymore), making <code class="docutils literal notranslate"><span class="pre">pytest.set_trace()</span></code> a mere shortcut.</p>
+</li>
+<li><p class="first">fix issue181: –pdb now also works on collect errors (and
+on internal errors) .  This was implemented by a slight internal
+refactoring and the introduction of a new hook
+<code class="docutils literal notranslate"><span class="pre">pytest_exception_interact</span></code> hook (see next item).</p>
+</li>
+<li><p class="first">fix issue341: introduce new experimental hook for IDEs/terminals to
+intercept debugging: <code class="docutils literal notranslate"><span class="pre">pytest_exception_interact(node,</span> <span class="pre">call,</span> <span class="pre">report)</span></code>.</p>
+</li>
+<li><p class="first">new monkeypatch.setattr() variant to provide a shorter
+invocation for patching out classes/functions from modules:</p>
+<blockquote>
+<div><p>monkeypatch.setattr(“requests.get”, myfunc)</p>
+</div></blockquote>
+<p>will replace the “get” function of the “requests” module with <code class="docutils literal notranslate"><span class="pre">myfunc</span></code>.</p>
+</li>
+<li><p class="first">fix issue322: tearDownClass is not run if setUpClass failed. Thanks
+Mathieu Agopian for the initial fix.  Also make all of pytest/nose
+finalizer mimic the same generic behaviour: if a setupX exists and
+fails, don’t run teardownX.  This internally introduces a new method
+“node.addfinalizer()” helper which can only be called during the setup
+phase of a node.</p>
+</li>
+<li><p class="first">simplify pytest.mark.parametrize() signature: allow to pass a
+CSV-separated string to specify argnames.  For example:
+<code class="docutils literal notranslate"><span class="pre">pytest.mark.parametrize(&quot;input,expected&quot;,</span>&#160; <span class="pre">[(1,2),</span> <span class="pre">(2,3)])</span></code>
+works as well as the previous:
+<code class="docutils literal notranslate"><span class="pre">pytest.mark.parametrize((&quot;input&quot;,</span> <span class="pre">&quot;expected&quot;),</span> <span class="pre">...)</span></code>.</p>
+</li>
+<li><p class="first">add support for setUpModule/tearDownModule detection, thanks Brian Okken.</p>
+</li>
+<li><p class="first">integrate tab-completion on options through use of “argcomplete”.
+Thanks Anthon van der Neut for the PR.</p>
+</li>
+<li><p class="first">change option names to be hyphen-separated long options but keep the
+old spelling backward compatible.  py.test -h will only show the
+hyphenated version, for example “–collect-only” but “–collectonly”
+will remain valid as well (for backward-compat reasons).  Many thanks to
+Anthon van der Neut for the implementation and to Hynek Schlawack for
+pushing us.</p>
+</li>
+<li><p class="first">fix issue 308 - allow to mark/xfail/skip individual parameter sets
+when parametrizing.  Thanks Brianna Laugher.</p>
+</li>
+<li><p class="first">call new experimental pytest_load_initial_conftests hook to allow
+3rd party plugins to do something before a conftest is loaded.</p>
+</li>
+</ul>
+<p>Bug fixes:</p>
+<ul class="simple">
+<li>fix issue358 - capturing options are now parsed more properly
+by using a new parser.parse_known_args method.</li>
+<li>pytest now uses argparse instead of optparse (thanks Anthon) which
+means that “argparse” is added as a dependency if installing into python2.6
+environments or below.</li>
+<li>fix issue333: fix a case of bad unittest/pytest hook interaction.</li>
+<li>PR27: correctly handle nose.SkipTest during collection.  Thanks
+Antonio Cuni, Ronny Pfannschmidt.</li>
+<li>fix issue355: junitxml puts name=”pytest” attribute to testsuite tag.</li>
+<li>fix issue336: autouse fixture in plugins should work again.</li>
+<li>fix issue279: improve object comparisons on assertion failure
+for standard datatypes and recognise collections.abc.  Thanks to
+Brianna Laugher and Mathieu Agopian.</li>
+<li>fix issue317: assertion rewriter support for the is_package method</li>
+<li>fix issue335: document py.code.ExceptionInfo() object returned
+from pytest.raises(), thanks Mathieu Agopian.</li>
+<li>remove implicit distribute_setup support from setup.py.</li>
+<li>fix issue305: ignore any problems when writing pyc files.</li>
+<li>SO-17664702: call fixture finalizers even if the fixture function
+partially failed (finalizers would not always be called before)</li>
+<li>fix issue320 - fix class scope for fixtures when mixed with
+module-level functions.  Thanks Anatloy Bubenkoff.</li>
+<li>you can specify “-q” or “-qq” to get different levels of “quieter”
+reporting (thanks Katarzyna Jachim)</li>
+<li>fix issue300 - Fix order of conftest loading when starting py.test
+in a subdirectory.</li>
+<li>fix issue323 - sorting of many module-scoped arg parametrizations</li>
+<li>make sessionfinish hooks execute with the same cwd-context as at
+session start (helps fix plugin behaviour which write output files
+with relative path such as pytest-cov)</li>
+<li>fix issue316 - properly reference collection hooks in docs</li>
+<li>fix issue 306 - cleanup of -k/-m options to only match markers/test
+names/keywords respectively.  Thanks Wouter van Ackooy.</li>
+<li>improved doctest counting for doctests in python modules –
+files without any doctest items will not show up anymore
+and doctest examples are counted as separate test items.
+thanks Danilo Bellini.</li>
+<li>fix issue245 by depending on the released py-1.4.14
+which fixes py.io.dupfile to work with files with no
+mode. Thanks Jason R. Coombs.</li>
+<li>fix junitxml generation when test output contains control characters,
+addressing issue267, thanks Jaap Broekhuizen</li>
+<li>fix issue338: honor –tb style for setup/teardown errors as well.  Thanks Maho.</li>
+<li>fix issue307 - use yaml.safe_load in example, thanks Mark Eichin.</li>
+<li>better parametrize error messages, thanks Brianna Laugher</li>
+<li>pytest_terminal_summary(terminalreporter) hooks can now use
+“.section(title)” and “.line(msg)” methods to print extra
+information at the end of a test run.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.3.5.html" title="pytest-2.3.5: bug fixes and little improvements"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.4.1.html" title="pytest-2.4.1: fixing three regressions compared to 2.3.5"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,192 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Pytest API and builtin fixtures &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-api-and-builtin-fixtures">
+<span id="pytest-helpers"></span><h1>Pytest API and builtin fixtures<a class="headerlink" href="#pytest-api-and-builtin-fixtures" title="Permalink to this headline">¶</a></h1>
+<p>Most of the information of this page has been moved over to <a class="reference external" href="https://docs.python.org/3/distutils/commandref.html#reference" title="(in Python v3.8)"><span>Command Reference</span></a>.</p>
+<p>For information on plugin hooks and objects, see <a class="reference internal" href="writing_plugins.html#plugins"><span class="std std-ref">Writing plugins</span></a>.</p>
+<p>For information on the <code class="docutils literal notranslate"><span class="pre">pytest.mark</span></code> mechanism, see <a class="reference internal" href="mark.html#mark"><span class="std std-ref">Marking test functions with attributes</span></a>.</p>
+<p>For information about fixtures, see <a class="reference internal" href="fixture.html#fixtures"><span class="std std-ref">pytest fixtures: explicit, modular, scalable</span></a>. To see a complete list of available fixtures (add <code class="docutils literal notranslate"><span class="pre">-v</span></code> to also see fixtures with leading <code class="docutils literal notranslate"><span class="pre">_</span></code>), type</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q --fixtures
+cache
+    Return a cache object that can persist state between testing sessions.
+
+    cache.get(key, default)
+    cache.set(key, value)
+
+    Keys must be a ``/`` separated value, where the first part is usually the
+    name of your plugin or application to avoid clashes with other cache users.
+
+    Values can be any object handled by the json stdlib module.
+capsys
+    Enable capturing of writes to ``sys.stdout`` and ``sys.stderr`` and make
+    captured output available via ``capsys.readouterr()`` method calls
+    which return a ``(out, err)`` namedtuple.  ``out`` and ``err`` will be ``text``
+    objects.
+capsysbinary
+    Enable capturing of writes to ``sys.stdout`` and ``sys.stderr`` and make
+    captured output available via ``capsys.readouterr()`` method calls
+    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be ``bytes``
+    objects.
+capfd
+    Enable capturing of writes to file descriptors ``1`` and ``2`` and make
+    captured output available via ``capfd.readouterr()`` method calls
+    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be ``text``
+    objects.
+capfdbinary
+    Enable capturing of write to file descriptors 1 and 2 and make
+    captured output available via ``capfdbinary.readouterr`` method calls
+    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be
+    ``bytes`` objects.
+doctest_namespace
+    Fixture that returns a :py:class:`dict` that will be injected into the namespace of doctests.
+pytestconfig
+    Session-scoped fixture that returns the :class:`_pytest.config.Config` object.
+
+    Example::
+
+        def test_foo(pytestconfig):
+            if pytestconfig.getoption(&quot;verbose&quot;):
+                ...
+record_property
+    Add an extra properties the calling test.
+    User properties become part of the test report and are available to the
+    configured reporters, like JUnit XML.
+    The fixture is callable with ``(name, value)``, with value being automatically
+    xml-encoded.
+
+    Example::
+
+        def test_function(record_property):
+            record_property(&quot;example_key&quot;, 1)
+record_xml_property
+    (Deprecated) use record_property.
+record_xml_attribute
+    Add extra xml attributes to the tag for the calling test.
+    The fixture is callable with ``(name, value)``, with value being
+    automatically xml-encoded
+caplog
+    Access and control log capturing.
+
+    Captured logs are available through the following properties/methods::
+
+    * caplog.text            -&gt; string containing formatted log output
+    * caplog.records         -&gt; list of logging.LogRecord instances
+    * caplog.record_tuples   -&gt; list of (logger_name, level, message) tuples
+    * caplog.clear()         -&gt; clear captured records and formatted log output string
+monkeypatch
+    The returned ``monkeypatch`` fixture provides these
+    helper methods to modify objects, dictionaries or os.environ::
+
+        monkeypatch.setattr(obj, name, value, raising=True)
+        monkeypatch.delattr(obj, name, raising=True)
+        monkeypatch.setitem(mapping, name, value)
+        monkeypatch.delitem(obj, name, raising=True)
+        monkeypatch.setenv(name, value, prepend=False)
+        monkeypatch.delenv(name, raising=True)
+        monkeypatch.syspath_prepend(path)
+        monkeypatch.chdir(path)
+
+    All modifications will be undone after the requesting
+    test function or fixture has finished. The ``raising``
+    parameter determines if a KeyError or AttributeError
+    will be raised if the set/deletion operation has no target.
+recwarn
+    Return a :class:`WarningsRecorder` instance that records all warnings emitted by test functions.
+
+    See http://docs.python.org/library/warnings.html for information
+    on warning categories.
+tmpdir_factory
+    Return a :class:`_pytest.tmpdir.TempdirFactory` instance for the test session.
+tmp_path_factory
+    Return a :class:`_pytest.tmpdir.TempPathFactory` instance for the test session.
+tmpdir
+    Return a temporary directory path object
+    which is unique to each test function invocation,
+    created as a sub directory of the base temporary
+    directory.  The returned object is a `py.path.local`_
+    path object.
+
+    .. _`py.path.local`: https://py.readthedocs.io/en/latest/path.html
+tmp_path
+    Return a temporary directory path object
+    which is unique to each test function invocation,
+    created as a sub directory of the base temporary
+    directory.  The returned object is a :class:`pathlib.Path`
+    object.
+
+    .. note::
+
+        in python &lt; 3.6 this is a pathlib2.Path
+
+no tests ran in 0.12 seconds
+</pre></div>
+</div>
+<p>You can also interactively ask for help, e.g. by typing on the Python interactive prompt something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="n">help</span><span class="p">(</span><span class="n">pytest</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

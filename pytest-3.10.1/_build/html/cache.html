@@ -1,0 +1,333 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Cache: working with cross-testrun state &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="unittest.TestCase Support" href="unittest.html" />
+    <link rel="prev" title="Parametrizing fixtures and test functions" href="parametrize.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="unittest.html" title="unittest.TestCase Support"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="parametrize.html" title="Parametrizing fixtures and test functions"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="cache-working-with-cross-testrun-state">
+<span id="cache"></span><span id="cache-provider"></span><h1>Cache: working with cross-testrun state<a class="headerlink" href="#cache-working-with-cross-testrun-state" title="Permalink to this headline">¶</a></h1>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.8.</span></p>
+</div>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>The plugin provides two command line options to rerun failures from the
+last <code class="docutils literal notranslate"><span class="pre">pytest</span></code> invocation:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">--lf</span></code>, <code class="docutils literal notranslate"><span class="pre">--last-failed</span></code> - to only re-run the failures.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--ff</span></code>, <code class="docutils literal notranslate"><span class="pre">--failed-first</span></code> - to run the failures first and then the rest of
+the tests.</li>
+</ul>
+<p>For cleanup (usually not needed), a <code class="docutils literal notranslate"><span class="pre">--cache-clear</span></code> option allows to remove
+all cross-session cache contents ahead of a test run.</p>
+<p>Other plugins may access the <a class="reference internal" href="#config-cache">config.cache</a> object to set/get
+<strong>json encodable</strong> values between <code class="docutils literal notranslate"><span class="pre">pytest</span></code> invocations.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This plugin is enabled by default, but can be disabled if needed: see
+<a class="reference internal" href="plugins.html#cmdunregister"><span class="std std-ref">Deactivating / unregistering a plugin by name</span></a> (the internal name for this plugin is
+<code class="docutils literal notranslate"><span class="pre">cacheprovider</span></code>).</p>
+</div>
+</div>
+<div class="section" id="rerunning-only-failures-or-failures-first">
+<h2>Rerunning only failures or failures first<a class="headerlink" href="#rerunning-only-failures-or-failures-first" title="Permalink to this headline">¶</a></h2>
+<p>First, let’s create 50 test invocation of which only 2 fail:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_50.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;i&quot;</span><span class="p">,</span> <span class="nb">range</span><span class="p">(</span><span class="mi">50</span><span class="p">))</span>
+<span class="k">def</span> <span class="nf">test_num</span><span class="p">(</span><span class="n">i</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">17</span><span class="p">,</span> <span class="mi">25</span><span class="p">):</span>
+       <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;bad luck&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>If you run this for the first time you will see two failures:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q
+.................F.......F........................                   [100%]
+================================= FAILURES =================================
+_______________________________ test_num[17] _______________________________
+
+i = 17
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+_______________________________ test_num[25] _______________________________
+
+i = 25
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+2 failed, 48 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>If you then run it with <code class="docutils literal notranslate"><span class="pre">--lf</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --lf
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 50 items / 48 deselected
+run-last-failure: rerun previous 2 failures
+
+test_50.py FF                                                        [100%]
+
+================================= FAILURES =================================
+_______________________________ test_num[17] _______________________________
+
+i = 17
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+_______________________________ test_num[25] _______________________________
+
+i = 25
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+================= 2 failed, 48 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>You have run only the two failing test from the last run, while 48 tests have
+not been run (“deselected”).</p>
+<p>Now, if you run with the <code class="docutils literal notranslate"><span class="pre">--ff</span></code> option, all tests will be run but the first
+previous failures will be executed first (as can be seen from the series
+of <code class="docutils literal notranslate"><span class="pre">FF</span></code> and dots):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --ff
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 50 items
+run-last-failure: rerun previous 2 failures first
+
+test_50.py FF................................................        [100%]
+
+================================= FAILURES =================================
+_______________________________ test_num[17] _______________________________
+
+i = 17
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+_______________________________ test_num[25] _______________________________
+
+i = 25
+
+    @pytest.mark.parametrize(&quot;i&quot;, range(50))
+    def test_num(i):
+        if i in (17, 25):
+&gt;          pytest.fail(&quot;bad luck&quot;)
+E          Failed: bad luck
+
+test_50.py:6: Failed
+=================== 2 failed, 48 passed in 0.12 seconds ====================
+</pre></div>
+</div>
+<p id="config-cache">New <code class="docutils literal notranslate"><span class="pre">--nf</span></code>, <code class="docutils literal notranslate"><span class="pre">--new-first</span></code> options: run new tests first followed by the rest
+of the tests, in both cases tests are also sorted by the file modified time,
+with more recent files coming first.</p>
+</div>
+<div class="section" id="behavior-when-no-tests-failed-in-the-last-run">
+<h2>Behavior when no tests failed in the last run<a class="headerlink" href="#behavior-when-no-tests-failed-in-the-last-run" title="Permalink to this headline">¶</a></h2>
+<p>When no tests failed in the last run, or when no cached <code class="docutils literal notranslate"><span class="pre">lastfailed</span></code> data was
+found, <code class="docutils literal notranslate"><span class="pre">pytest</span></code> can be configured either to run all of the tests or no tests,
+using the <code class="docutils literal notranslate"><span class="pre">--last-failed-no-failures</span></code> option, which takes one of the following values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">last</span><span class="o">-</span><span class="n">failed</span> <span class="o">--</span><span class="n">last</span><span class="o">-</span><span class="n">failed</span><span class="o">-</span><span class="n">no</span><span class="o">-</span><span class="n">failures</span> <span class="nb">all</span>    <span class="c1"># run all tests (default behavior)</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">last</span><span class="o">-</span><span class="n">failed</span> <span class="o">--</span><span class="n">last</span><span class="o">-</span><span class="n">failed</span><span class="o">-</span><span class="n">no</span><span class="o">-</span><span class="n">failures</span> <span class="n">none</span>   <span class="c1"># run no tests and exit</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-new-config-cache-object">
+<h2>The new config.cache object<a class="headerlink" href="#the-new-config-cache-object" title="Permalink to this headline">¶</a></h2>
+<p>Plugins or conftest.py support code can get a cached value using the
+pytest <code class="docutils literal notranslate"><span class="pre">config</span></code> object.  Here is a basic example plugin which
+implements a <a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">pytest fixtures: explicit, modular, scalable</span></a> which re-uses previously created state
+across pytest invocations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_caching.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">mydata</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="n">val</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;example/value&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">val</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">9</span><span class="o">*</span><span class="mf">0.6</span><span class="p">)</span> <span class="c1"># expensive computation :)</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="mi">42</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">cache</span><span class="o">.</span><span class="n">set</span><span class="p">(</span><span class="s2">&quot;example/value&quot;</span><span class="p">,</span> <span class="n">val</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">val</span>
+
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">(</span><span class="n">mydata</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="n">mydata</span> <span class="o">==</span> <span class="mi">23</span>
+</pre></div>
+</div>
+<p>If you run this command once, it will take a while because
+of the sleep:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q
+F                                                                    [100%]
+================================= FAILURES =================================
+______________________________ test_function _______________________________
+
+mydata = 42
+
+    def test_function(mydata):
+&gt;       assert mydata == 23
+E       assert 42 == 23
+
+test_caching.py:14: AssertionError
+1 failed in 0.12 seconds
+</pre></div>
+</div>
+<p>If you run it a second time the value will be retrieved from
+the cache and this will be quick:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q
+F                                                                    [100%]
+================================= FAILURES =================================
+______________________________ test_function _______________________________
+
+mydata = 42
+
+    def test_function(mydata):
+&gt;       assert mydata == 23
+E       assert 42 == 23
+
+test_caching.py:14: AssertionError
+1 failed in 0.12 seconds
+</pre></div>
+</div>
+<p>See the <a class="reference internal" href="reference.html#cache-api"><span class="std std-ref">config.cache</span></a> for more details.</p>
+</div>
+<div class="section" id="inspecting-cache-content">
+<h2>Inspecting Cache content<a class="headerlink" href="#inspecting-cache-content" title="Permalink to this headline">¶</a></h2>
+<p>You can always peek at the content of the cache using the
+<code class="docutils literal notranslate"><span class="pre">--cache-show</span></code> command line option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --cache-show
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+cachedir: $REGENDOC_TMPDIR/.pytest_cache
+------------------------------- cache values -------------------------------
+cache/lastfailed contains:
+  {&#39;test_caching.py::test_function&#39;: True}
+cache/nodeids contains:
+  [&#39;test_caching.py::test_function&#39;]
+cache/stepwise contains:
+  []
+example/value contains:
+  42
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+</div>
+<div class="section" id="clearing-cache-content">
+<h2>Clearing Cache content<a class="headerlink" href="#clearing-cache-content" title="Permalink to this headline">¶</a></h2>
+<p>You can instruct pytest to clear all cache files and values
+by adding the <code class="docutils literal notranslate"><span class="pre">--cache-clear</span></code> option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">cache</span><span class="o">-</span><span class="n">clear</span>
+</pre></div>
+</div>
+<p>This is recommended for invocations from Continuous Integration
+servers where isolation and correctness is more important
+than speed.</p>
+</div>
+<div class="section" id="stepwise">
+<h2>Stepwise<a class="headerlink" href="#stepwise" title="Permalink to this headline">¶</a></h2>
+<p>As an alternative to <code class="docutils literal notranslate"><span class="pre">--lf</span> <span class="pre">-x</span></code>, especially for cases where you expect a large part of the test suite will fail, <code class="docutils literal notranslate"><span class="pre">--sw</span></code>, <code class="docutils literal notranslate"><span class="pre">--stepwise</span></code> allows you to fix them one at a time. The test suite will run until the first failure and then stop. At the next invocation, tests will continue from the last failing test and then run until the next failing test. You may use the <code class="docutils literal notranslate"><span class="pre">--stepwise-skip</span></code> option to ignore one failing test and stop the test execution on the second failing test instead. This is useful if you get stuck on a failing test and just want to ignore it until later.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="unittest.html" title="unittest.TestCase Support"
+             >next</a></li>
+        <li class="right" >
+          <a href="parametrize.html" title="Parametrizing fixtures and test functions"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

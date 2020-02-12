@@ -1,0 +1,142 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest import mechanisms and sys.path/PYTHONPATH &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Configuration" href="customize.html" />
+    <link rel="prev" title="Flaky tests" href="flaky.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="customize.html" title="Configuration"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="flaky.html" title="Flaky tests"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-import-mechanisms-and-sys-path-pythonpath">
+<span id="pythonpath"></span><h1>pytest import mechanisms and <code class="docutils literal notranslate"><span class="pre">sys.path</span></code>/<code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code><a class="headerlink" href="#pytest-import-mechanisms-and-sys-path-pythonpath" title="Permalink to this headline">¶</a></h1>
+<p>Here’s a list of scenarios where pytest may need to change <code class="docutils literal notranslate"><span class="pre">sys.path</span></code> in order
+to import test modules or <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files.</p>
+<div class="section" id="test-modules-conftest-py-files-inside-packages">
+<h2>Test modules / <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files inside packages<a class="headerlink" href="#test-modules-conftest-py-files-inside-packages" title="Permalink to this headline">¶</a></h2>
+<p>Consider this file and directory layout:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">/</span>
+<span class="o">|-</span> <span class="n">foo</span><span class="o">/</span>
+   <span class="o">|-</span> <span class="fm">__init__</span><span class="o">.</span><span class="n">py</span>
+   <span class="o">|-</span> <span class="n">conftest</span><span class="o">.</span><span class="n">py</span>
+   <span class="o">|-</span> <span class="n">bar</span><span class="o">/</span>
+      <span class="o">|-</span> <span class="fm">__init__</span><span class="o">.</span><span class="n">py</span>
+      <span class="o">|-</span> <span class="n">tests</span><span class="o">/</span>
+         <span class="o">|-</span> <span class="fm">__init__</span><span class="o">.</span><span class="n">py</span>
+         <span class="o">|-</span> <span class="n">test_foo</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>When executing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">root</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>pytest will find <code class="docutils literal notranslate"><span class="pre">foo/bar/tests/test_foo.py</span></code> and realize it is part of a package given that
+there’s an <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> file in the same folder. It will then search upwards until it can find the
+last folder which still contains an <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> file in order to find the package <em>root</em> (in
+this case <code class="docutils literal notranslate"><span class="pre">foo/</span></code>). To load the module, it will insert <code class="docutils literal notranslate"><span class="pre">root/</span></code>  to the front of
+<code class="docutils literal notranslate"><span class="pre">sys.path</span></code> (if not there already) in order to load
+<code class="docutils literal notranslate"><span class="pre">test_foo.py</span></code> as the <em>module</em> <code class="docutils literal notranslate"><span class="pre">foo.bar.tests.test_foo</span></code>.</p>
+<p>The same logic applies to the <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file: it will be imported as <code class="docutils literal notranslate"><span class="pre">foo.conftest</span></code> module.</p>
+<p>Preserving the full package name is important when tests live in a package to avoid problems
+and allow test modules to have duplicated names. This is also discussed in details in
+<a class="reference internal" href="goodpractices.html#test-discovery"><span class="std std-ref">Conventions for Python test discovery</span></a>.</p>
+</div>
+<div class="section" id="standalone-test-modules-conftest-py-files">
+<h2>Standalone test modules / <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files<a class="headerlink" href="#standalone-test-modules-conftest-py-files" title="Permalink to this headline">¶</a></h2>
+<p>Consider this file and directory layout:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">root</span><span class="o">/</span>
+<span class="o">|-</span> <span class="n">foo</span><span class="o">/</span>
+   <span class="o">|-</span> <span class="n">conftest</span><span class="o">.</span><span class="n">py</span>
+   <span class="o">|-</span> <span class="n">bar</span><span class="o">/</span>
+      <span class="o">|-</span> <span class="n">tests</span><span class="o">/</span>
+         <span class="o">|-</span> <span class="n">test_foo</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p>When executing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">root</span><span class="o">/</span>
+</pre></div>
+</div>
+<p>pytest will find <code class="docutils literal notranslate"><span class="pre">foo/bar/tests/test_foo.py</span></code> and realize it is NOT part of a package given that
+there’s no <code class="docutils literal notranslate"><span class="pre">__init__.py</span></code> file in the same folder. It will then add <code class="docutils literal notranslate"><span class="pre">root/foo/bar/tests</span></code> to
+<code class="docutils literal notranslate"><span class="pre">sys.path</span></code> in order to import <code class="docutils literal notranslate"><span class="pre">test_foo.py</span></code> as the <em>module</em> <code class="docutils literal notranslate"><span class="pre">test_foo</span></code>. The same is done
+with the <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file by adding <code class="docutils literal notranslate"><span class="pre">root/foo</span></code> to <code class="docutils literal notranslate"><span class="pre">sys.path</span></code> to import it as <code class="docutils literal notranslate"><span class="pre">conftest</span></code>.</p>
+<p>For this reason this layout cannot have test modules with the same name, as they all will be
+imported in the global import namespace.</p>
+<p>This is also discussed in details in <a class="reference internal" href="goodpractices.html#test-discovery"><span class="std std-ref">Conventions for Python test discovery</span></a>.</p>
+</div>
+<div class="section" id="invoking-pytest-versus-python-m-pytest">
+<h2>Invoking <code class="docutils literal notranslate"><span class="pre">pytest</span></code> versus <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pytest</span></code><a class="headerlink" href="#invoking-pytest-versus-python-m-pytest" title="Permalink to this headline">¶</a></h2>
+<p>Running pytest with <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pytest</span> <span class="pre">[...]</span></code> instead of <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">[...]</span></code> yields nearly
+equivalent behaviour, except that the former call will add the current directory to <code class="docutils literal notranslate"><span class="pre">sys.path</span></code>.
+See also <a class="reference internal" href="usage.html#cmdline"><span class="std std-ref">Calling pytest through python -m pytest</span></a>.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="customize.html" title="Configuration"
+             >next</a></li>
+        <li class="right" >
+          <a href="flaky.html" title="Flaky tests"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

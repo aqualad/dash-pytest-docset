@@ -1,0 +1,276 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pluggy.callers &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for pluggy.callers</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Call loop machinery</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="n">_py3</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&gt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+
+<span class="k">if</span> <span class="ow">not</span> <span class="n">_py3</span><span class="p">:</span>
+    <span class="n">exec</span><span class="p">(</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">def _reraise(cls, val, tb):</span>
+<span class="sd">    raise cls, val, tb</span>
+<span class="sd">&quot;&quot;&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_raise_wrapfail</span><span class="p">(</span><span class="n">wrap_controller</span><span class="p">,</span> <span class="n">msg</span><span class="p">):</span>
+    <span class="n">co</span> <span class="o">=</span> <span class="n">wrap_controller</span><span class="o">.</span><span class="n">gi_code</span>
+    <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+        <span class="s2">&quot;wrap_controller at </span><span class="si">%r</span><span class="s2"> </span><span class="si">%s</span><span class="s2">:</span><span class="si">%d</span><span class="s2"> </span><span class="si">%s</span><span class="s2">&quot;</span>
+        <span class="o">%</span> <span class="p">(</span><span class="n">co</span><span class="o">.</span><span class="n">co_name</span><span class="p">,</span> <span class="n">co</span><span class="o">.</span><span class="n">co_filename</span><span class="p">,</span> <span class="n">co</span><span class="o">.</span><span class="n">co_firstlineno</span><span class="p">,</span> <span class="n">msg</span><span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">HookCallError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Hook was called wrongly. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="_Result"><a class="viewcode-back" href="../../reference.html#pluggy.callers._Result">[docs]</a><span class="k">class</span> <span class="nc">_Result</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="o">=</span> <span class="n">excinfo</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">excinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the result(s) for this hook call (DEPRECATED in favor of ``get_result()``).&quot;&quot;&quot;</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Use get_result() which forces correct exception handling&quot;</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="ne">DeprecationWarning</span><span class="p">(</span><span class="n">msg</span><span class="p">),</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_call</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="n">excinfo</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">result</span> <span class="o">=</span> <span class="n">func</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+            <span class="n">excinfo</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">)</span>
+
+<div class="viewcode-block" id="_Result.force_result"><a class="viewcode-back" href="../../reference.html#pluggy.callers._Result.force_result">[docs]</a>    <span class="k">def</span> <span class="nf">force_result</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Force the result(s) to ``result``.</span>
+
+<span class="sd">        If the hook was marked as a ``firstresult`` a single value should</span>
+<span class="sd">        be set otherwise set a (modified) list of results. Any exceptions</span>
+<span class="sd">        found during invocation will be deleted.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_result</span> <span class="o">=</span> <span class="n">result</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="_Result.get_result"><a class="viewcode-back" href="../../reference.html#pluggy.callers._Result.get_result">[docs]</a>    <span class="k">def</span> <span class="nf">get_result</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get the result(s) for this hook call.</span>
+
+<span class="sd">        If the hook was marked as a ``firstresult`` only a single value</span>
+<span class="sd">        will be returned otherwise a list of results.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_result</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ex</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span>
+            <span class="k">if</span> <span class="n">_py3</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">ex</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">with_traceback</span><span class="p">(</span><span class="n">ex</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+            <span class="n">_reraise</span><span class="p">(</span><span class="o">*</span><span class="n">ex</span><span class="p">)</span>  <span class="c1"># noqa</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">_wrapped_call</span><span class="p">(</span><span class="n">wrap_controller</span><span class="p">,</span> <span class="n">func</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Wrap calling to a function with a generator which needs to yield</span>
+<span class="sd">    exactly once.  The yield point will trigger calling the wrapped function</span>
+<span class="sd">    and return its ``_Result`` to the yield point.  The generator then needs</span>
+<span class="sd">    to finish (raise StopIteration) in order for the wrapped call to complete.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="nb">next</span><span class="p">(</span><span class="n">wrap_controller</span><span class="p">)</span>  <span class="c1"># first yield</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="n">_raise_wrapfail</span><span class="p">(</span><span class="n">wrap_controller</span><span class="p">,</span> <span class="s2">&quot;did not yield&quot;</span><span class="p">)</span>
+    <span class="n">call_outcome</span> <span class="o">=</span> <span class="n">_Result</span><span class="o">.</span><span class="n">from_call</span><span class="p">(</span><span class="n">func</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">wrap_controller</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">call_outcome</span><span class="p">)</span>
+        <span class="n">_raise_wrapfail</span><span class="p">(</span><span class="n">wrap_controller</span><span class="p">,</span> <span class="s2">&quot;has second yield&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="k">return</span> <span class="n">call_outcome</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">_LegacyMultiCall</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; execute a call into multiple python functions/methods. &quot;&quot;&quot;</span>
+
+    <span class="c1"># XXX note that the __multicall__ argument is supported only</span>
+    <span class="c1"># for pytest compatibility reasons.  It was never officially</span>
+    <span class="c1"># supported there and is explicitely deprecated since 2.8</span>
+    <span class="c1"># so we can remove it soon, allowing to avoid the below recursion</span>
+    <span class="c1"># in execute() and simplify/speed up the execute loop.</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">hook_impls</span><span class="p">,</span> <span class="n">kwargs</span><span class="p">,</span> <span class="n">firstresult</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hook_impls</span> <span class="o">=</span> <span class="n">hook_impls</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caller_kwargs</span> <span class="o">=</span> <span class="n">kwargs</span>  <span class="c1"># come from _HookCaller.__call__()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">caller_kwargs</span><span class="p">[</span><span class="s2">&quot;__multicall__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">firstresult</span> <span class="o">=</span> <span class="n">firstresult</span>
+
+    <span class="k">def</span> <span class="nf">execute</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">caller_kwargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">caller_kwargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">results</span> <span class="o">=</span> <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">firstresult</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">firstresult</span>
+
+        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">hook_impls</span><span class="p">:</span>
+            <span class="n">hook_impl</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">hook_impls</span><span class="o">.</span><span class="n">pop</span><span class="p">()</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">caller_kwargs</span><span class="p">[</span><span class="n">argname</span><span class="p">]</span> <span class="k">for</span> <span class="n">argname</span> <span class="ow">in</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">argnames</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">argname</span> <span class="ow">in</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">argnames</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">argname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">caller_kwargs</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="n">HookCallError</span><span class="p">(</span>
+                            <span class="s2">&quot;hook call must provide argument </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">argname</span><span class="p">,)</span>
+                        <span class="p">)</span>
+            <span class="k">if</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">hookwrapper</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">_wrapped_call</span><span class="p">(</span><span class="n">hook_impl</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute</span><span class="p">)</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">firstresult</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">res</span>
+                <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">firstresult</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">status</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> meths&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">hook_impls</span><span class="p">),)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;results&quot;</span><span class="p">):</span>
+            <span class="n">status</span> <span class="o">=</span> <span class="p">(</span><span class="s2">&quot;</span><span class="si">%d</span><span class="s2"> results, &quot;</span> <span class="o">%</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">results</span><span class="p">))</span> <span class="o">+</span> <span class="n">status</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;_MultiCall </span><span class="si">%s</span><span class="s2">, kwargs=</span><span class="si">%r</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">caller_kwargs</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_legacymulticall</span><span class="p">(</span><span class="n">hook_impls</span><span class="p">,</span> <span class="n">caller_kwargs</span><span class="p">,</span> <span class="n">firstresult</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">_LegacyMultiCall</span><span class="p">(</span>
+        <span class="n">hook_impls</span><span class="p">,</span> <span class="n">caller_kwargs</span><span class="p">,</span> <span class="n">firstresult</span><span class="o">=</span><span class="n">firstresult</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">execute</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_multicall</span><span class="p">(</span><span class="n">hook_impls</span><span class="p">,</span> <span class="n">caller_kwargs</span><span class="p">,</span> <span class="n">firstresult</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Execute a call into multiple python functions/methods and return the</span>
+<span class="sd">    result(s).</span>
+
+<span class="sd">    ``caller_kwargs`` comes from _HookCaller.__call__().</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">excinfo</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>  <span class="c1"># run impl and wrapper setup functions in a loop</span>
+        <span class="n">teardowns</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">hook_impl</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">hook_impls</span><span class="p">):</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">args</span> <span class="o">=</span> <span class="p">[</span><span class="n">caller_kwargs</span><span class="p">[</span><span class="n">argname</span><span class="p">]</span> <span class="k">for</span> <span class="n">argname</span> <span class="ow">in</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">argnames</span><span class="p">]</span>
+                <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">argname</span> <span class="ow">in</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">argnames</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">argname</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">caller_kwargs</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="n">HookCallError</span><span class="p">(</span>
+                                <span class="s2">&quot;hook call must provide argument </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">argname</span><span class="p">,)</span>
+                            <span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">hookwrapper</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">gen</span> <span class="o">=</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+                        <span class="nb">next</span><span class="p">(</span><span class="n">gen</span><span class="p">)</span>  <span class="c1"># first yield</span>
+                        <span class="n">teardowns</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">gen</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                        <span class="n">_raise_wrapfail</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="s2">&quot;did not yield&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">hook_impl</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">res</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">firstresult</span><span class="p">:</span>  <span class="c1"># halt further impl calls</span>
+                            <span class="k">break</span>
+        <span class="k">except</span> <span class="ne">BaseException</span><span class="p">:</span>
+            <span class="n">excinfo</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">firstresult</span><span class="p">:</span>  <span class="c1"># first result hooks return a single value</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">_Result</span><span class="p">(</span><span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="n">results</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="n">_Result</span><span class="p">(</span><span class="n">results</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">)</span>
+
+        <span class="c1"># run all wrapper post-yield blocks</span>
+        <span class="k">for</span> <span class="n">gen</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="n">teardowns</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">gen</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">outcome</span><span class="p">)</span>
+                <span class="n">_raise_wrapfail</span><span class="p">(</span><span class="n">gen</span><span class="p">,</span> <span class="s2">&quot;has second yield&quot;</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">StopIteration</span><span class="p">:</span>
+                <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="n">outcome</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

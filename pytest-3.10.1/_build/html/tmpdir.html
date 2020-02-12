@@ -1,0 +1,236 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Temporary directories and files &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Capturing of the stdout/stderr output" href="capture.html" />
+    <link rel="prev" title="Monkeypatching/mocking modules and environments" href="monkeypatch.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="capture.html" title="Capturing of the stdout/stderr output"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="monkeypatch.html" title="Monkeypatching/mocking modules and environments"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="temporary-directories-and-files">
+<span id="tmpdir"></span><span id="tmpdir-handling"></span><h1>Temporary directories and files<a class="headerlink" href="#temporary-directories-and-files" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="the-tmp-path-fixture">
+<h2>The <code class="docutils literal notranslate"><span class="pre">tmp_path</span></code> fixture<a class="headerlink" href="#the-tmp-path-fixture" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.9.</span></p>
+</div>
+<p>You can use the <code class="docutils literal notranslate"><span class="pre">tmp_path</span></code> fixture which will
+provide a temporary directory unique to the test invocation,
+created in the <a class="reference internal" href="#base-temporary-directory">base temporary directory</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">tmp_path</span></code> is a <code class="docutils literal notranslate"><span class="pre">pathlib/pathlib2.Path</span></code> object. Here is an example test usage:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_tmp_path.py</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">CONTENT</span> <span class="o">=</span> <span class="sa">u</span><span class="s2">&quot;content&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">test_create_file</span><span class="p">(</span><span class="n">tmp_path</span><span class="p">):</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">tmp_path</span> <span class="o">/</span> <span class="s2">&quot;sub&quot;</span>
+    <span class="n">d</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">d</span> <span class="o">/</span> <span class="s2">&quot;hello.txt&quot;</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">write_text</span><span class="p">(</span><span class="n">CONTENT</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">read_text</span><span class="p">()</span> <span class="o">==</span> <span class="n">CONTENT</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">tmp_path</span><span class="o">.</span><span class="n">iterdir</span><span class="p">()))</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Running this would result in a passed test except for the last
+<code class="docutils literal notranslate"><span class="pre">assert</span> <span class="pre">0</span></code> line which we use to look at values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_tmp_path.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+
+test_tmp_path.py F                                                   [100%]
+
+================================= FAILURES =================================
+_____________________________ test_create_file _____________________________
+
+tmp_path = PosixPath(&#39;PYTEST_TMPDIR/test_create_file0&#39;)
+
+    def test_create_file(tmp_path):
+        d = tmp_path / &quot;sub&quot;
+        d.mkdir()
+        p = d / &quot;hello.txt&quot;
+        p.write_text(CONTENT)
+        assert p.read_text() == CONTENT
+        assert len(list(tmp_path.iterdir())) == 1
+&gt;       assert 0
+E       assert 0
+
+test_tmp_path.py:13: AssertionError
+========================= 1 failed in 0.12 seconds =========================
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-tmp-path-factory-fixture">
+<h2>The <code class="docutils literal notranslate"><span class="pre">tmp_path_factory</span></code> fixture<a class="headerlink" href="#the-tmp-path-factory-fixture" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.9.</span></p>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">tmp_path_factory</span></code> is a session-scoped fixture which can be used
+to create arbitrary temporary directories from any other fixture or test.</p>
+<p>It is intended to replace <code class="docutils literal notranslate"><span class="pre">tmpdir_factory</span></code>, and returns <a class="reference external" href="https://docs.python.org/3/library/pathlib.html#pathlib.Path" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">pathlib.Path</span></code></a> instances.</p>
+</div>
+<div class="section" id="the-tmpdir-fixture">
+<h2>The ‘tmpdir’ fixture<a class="headerlink" href="#the-tmpdir-fixture" title="Permalink to this headline">¶</a></h2>
+<p>You can use the <code class="docutils literal notranslate"><span class="pre">tmpdir</span></code> fixture which will
+provide a temporary directory unique to the test invocation,
+created in the <a class="reference internal" href="#base-temporary-directory">base temporary directory</a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">tmpdir</span></code> is a <a class="reference external" href="https://py.readthedocs.io/en/latest/path.html">py.path.local</a> object which offers <code class="docutils literal notranslate"><span class="pre">os.path</span></code> methods
+and more.  Here is an example test usage:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_tmpdir.py</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="k">def</span> <span class="nf">test_create_file</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">tmpdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;hello.txt&quot;</span><span class="p">)</span>
+    <span class="n">p</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;content&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="n">p</span><span class="o">.</span><span class="n">read</span><span class="p">()</span> <span class="o">==</span> <span class="s2">&quot;content&quot;</span>
+    <span class="k">assert</span> <span class="nb">len</span><span class="p">(</span><span class="n">tmpdir</span><span class="o">.</span><span class="n">listdir</span><span class="p">())</span> <span class="o">==</span> <span class="mi">1</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>Running this would result in a passed test except for the last
+<code class="docutils literal notranslate"><span class="pre">assert</span> <span class="pre">0</span></code> line which we use to look at values:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_tmpdir.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+
+test_tmpdir.py F                                                     [100%]
+
+================================= FAILURES =================================
+_____________________________ test_create_file _____________________________
+
+tmpdir = local(&#39;PYTEST_TMPDIR/test_create_file0&#39;)
+
+    def test_create_file(tmpdir):
+        p = tmpdir.mkdir(&quot;sub&quot;).join(&quot;hello.txt&quot;)
+        p.write(&quot;content&quot;)
+        assert p.read() == &quot;content&quot;
+        assert len(tmpdir.listdir()) == 1
+&gt;       assert 0
+E       assert 0
+
+test_tmpdir.py:7: AssertionError
+========================= 1 failed in 0.12 seconds =========================
+</pre></div>
+</div>
+</div>
+<div class="section" id="the-tmpdir-factory-fixture">
+<span id="tmpdir-factory-example"></span><h2>The ‘tmpdir_factory’ fixture<a class="headerlink" href="#the-tmpdir-factory-fixture" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.8.</span></p>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">tmpdir_factory</span></code> is a session-scoped fixture which can be used
+to create arbitrary temporary directories from any other fixture or test.</p>
+<p>For example, suppose your test suite needs a large image on disk, which is
+generated procedurally. Instead of computing the same image for each test
+that uses it into its own <code class="docutils literal notranslate"><span class="pre">tmpdir</span></code>, you can generate it once per-session
+to save time:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># contents of conftest.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">image_file</span><span class="p">(</span><span class="n">tmpdir_factory</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">compute_expensive_image</span><span class="p">()</span>
+    <span class="n">fn</span> <span class="o">=</span> <span class="n">tmpdir_factory</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="s2">&quot;data&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;img.png&quot;</span><span class="p">)</span>
+    <span class="n">img</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">fn</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">fn</span>
+
+
+<span class="c1"># contents of test_image.py</span>
+<span class="k">def</span> <span class="nf">test_histogram</span><span class="p">(</span><span class="n">image_file</span><span class="p">):</span>
+    <span class="n">img</span> <span class="o">=</span> <span class="n">load_image</span><span class="p">(</span><span class="n">image_file</span><span class="p">)</span>
+    <span class="c1"># compute and test histogram</span>
+</pre></div>
+</div>
+<p>See <a class="reference internal" href="reference.html#tmpdir-factory-api"><span class="std std-ref">tmpdir_factory API</span></a> for details.</p>
+</div>
+<div class="section" id="the-default-base-temporary-directory">
+<span id="base-temporary-directory"></span><h2>The default base temporary directory<a class="headerlink" href="#the-default-base-temporary-directory" title="Permalink to this headline">¶</a></h2>
+<p>Temporary directories are by default created as sub-directories of
+the system temporary directory.  The base name will be <code class="docutils literal notranslate"><span class="pre">pytest-NUM</span></code> where
+<code class="docutils literal notranslate"><span class="pre">NUM</span></code> will be incremented with each test run.  Moreover, entries older
+than 3 temporary directories will be removed.</p>
+<p>You can override the default temporary directory setting like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">basetemp</span><span class="o">=</span><span class="n">mydir</span>
+</pre></div>
+</div>
+<p>When distributing tests on the local machine, <code class="docutils literal notranslate"><span class="pre">pytest</span></code> takes care to
+configure a basetemp directory for the sub processes such that all temporary
+data lands below a single per-test run basetemp directory.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="capture.html" title="Capturing of the stdout/stderr output"
+             >next</a></li>
+        <li class="right" >
+          <a href="monkeypatch.html" title="Monkeypatching/mocking modules and environments"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

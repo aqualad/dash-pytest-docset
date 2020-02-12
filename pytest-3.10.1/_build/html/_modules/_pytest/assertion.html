@@ -1,0 +1,223 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.assertion &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.assertion</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">support for presenting detailed information in failing assertions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="kn">from</span> <span class="nn">_pytest.assertion</span> <span class="kn">import</span> <span class="n">rewrite</span>
+<span class="kn">from</span> <span class="nn">_pytest.assertion</span> <span class="kn">import</span> <span class="n">truncate</span>
+<span class="kn">from</span> <span class="nn">_pytest.assertion</span> <span class="kn">import</span> <span class="n">util</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">getgroup</span><span class="p">(</span><span class="s2">&quot;debugconfig&quot;</span><span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--assert&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;assertmode&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">(</span><span class="s2">&quot;rewrite&quot;</span><span class="p">,</span> <span class="s2">&quot;plain&quot;</span><span class="p">),</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;rewrite&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;MODE&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;&quot;&quot;Control assertion debugging tools.  &#39;plain&#39;</span>
+<span class="s2">                            performs no assertion debugging.  &#39;rewrite&#39;</span>
+<span class="s2">                            (the default) rewrites assert statements in</span>
+<span class="s2">                            test modules on import to provide assert</span>
+<span class="s2">                            expression information.&quot;&quot;&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="register_assert_rewrite"><a class="viewcode-back" href="../../writing_plugins.html#pytest.register_assert_rewrite">[docs]</a><span class="k">def</span> <span class="nf">register_assert_rewrite</span><span class="p">(</span><span class="o">*</span><span class="n">names</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Register one or more module names to be rewritten on import.</span>
+
+<span class="sd">    This function will make sure that this module or all modules inside</span>
+<span class="sd">    the package will get their assert statements rewritten.</span>
+<span class="sd">    Thus you should make sure to call this before the module is</span>
+<span class="sd">    actually imported, usually in your __init__.py if you are a plugin</span>
+<span class="sd">    using a package.</span>
+
+<span class="sd">    :raise TypeError: if the given module names are not strings.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">names</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;expected module names as *args, got </span><span class="si">{0}</span><span class="s2"> instead&quot;</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">repr</span><span class="p">(</span><span class="n">names</span><span class="p">)))</span>
+    <span class="k">for</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">hook</span><span class="p">,</span> <span class="n">rewrite</span><span class="o">.</span><span class="n">AssertionRewritingHook</span><span class="p">):</span>
+            <span class="n">importhook</span> <span class="o">=</span> <span class="n">hook</span>
+            <span class="k">break</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">importhook</span> <span class="o">=</span> <span class="n">DummyRewriteHook</span><span class="p">()</span>
+    <span class="n">importhook</span><span class="o">.</span><span class="n">mark_rewrite</span><span class="p">(</span><span class="o">*</span><span class="n">names</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">DummyRewriteHook</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A no-op import hook for when rewriting is disabled.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">mark_rewrite</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">names</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">AssertionState</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;State for the assertion plugin.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">trace</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">trace</span><span class="o">.</span><span class="n">root</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;assertion&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">hook</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">install_importhook</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Try to install the rewrite hook, raise SystemError if it fails.&quot;&quot;&quot;</span>
+    <span class="c1"># Jython has an AST bug that make the assertion rewriting hook malfunction.</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;java&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">SystemError</span><span class="p">(</span><span class="s2">&quot;rewrite not supported&quot;</span><span class="p">)</span>
+
+    <span class="n">config</span><span class="o">.</span><span class="n">_assertstate</span> <span class="o">=</span> <span class="n">AssertionState</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;rewrite&quot;</span><span class="p">)</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">_assertstate</span><span class="o">.</span><span class="n">hook</span> <span class="o">=</span> <span class="n">hook</span> <span class="o">=</span> <span class="n">rewrite</span><span class="o">.</span><span class="n">AssertionRewritingHook</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">hook</span><span class="p">)</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">_assertstate</span><span class="o">.</span><span class="n">trace</span><span class="p">(</span><span class="s2">&quot;installed rewrite import hook&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">undo</span><span class="p">():</span>
+        <span class="n">hook</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">_assertstate</span><span class="o">.</span><span class="n">hook</span>
+        <span class="k">if</span> <span class="n">hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">hook</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">meta_path</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">hook</span><span class="p">)</span>
+
+    <span class="n">config</span><span class="o">.</span><span class="n">add_cleanup</span><span class="p">(</span><span class="n">undo</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">hook</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_collection</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>
+    <span class="c1"># this hook is only called when test modules are collected</span>
+    <span class="c1"># so for example not in the master process of pytest-xdist</span>
+    <span class="c1"># (which does not collect test modules)</span>
+    <span class="n">assertstate</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">session</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_assertstate&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">assertstate</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">assertstate</span><span class="o">.</span><span class="n">hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">assertstate</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">set_session</span><span class="p">(</span><span class="n">session</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Setup the pytest_assertrepr_compare hook</span>
+
+<span class="sd">    The newinterpret and rewrite modules will use util._reprcompare if</span>
+<span class="sd">    it exists to use custom reporting via the</span>
+<span class="sd">    pytest_assertrepr_compare hook.  This sets up this custom</span>
+<span class="sd">    comparison for the test.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">callbinrepr</span><span class="p">(</span><span class="n">op</span><span class="p">,</span> <span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Call the pytest_assertrepr_compare hook and prepare the result</span>
+
+<span class="sd">        This uses the first result from the hook and then ensures the</span>
+<span class="sd">        following:</span>
+<span class="sd">        * Overly verbose explanations are truncated unless configured otherwise</span>
+<span class="sd">          (eg. if running in verbose mode).</span>
+<span class="sd">        * Embedded newlines are escaped to help util.format_explanation()</span>
+<span class="sd">          later.</span>
+<span class="sd">        * If the rewrite mode is used embedded %-characters are replaced</span>
+<span class="sd">          to protect later % formatting.</span>
+
+<span class="sd">        The result can be formatted by util.format_explanation() for</span>
+<span class="sd">        pretty printing.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">hook_result</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">ihook</span><span class="o">.</span><span class="n">pytest_assertrepr_compare</span><span class="p">(</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">item</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">op</span><span class="p">,</span> <span class="n">left</span><span class="o">=</span><span class="n">left</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="n">right</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">new_expl</span> <span class="ow">in</span> <span class="n">hook_result</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">new_expl</span><span class="p">:</span>
+                <span class="n">new_expl</span> <span class="o">=</span> <span class="n">truncate</span><span class="o">.</span><span class="n">truncate_if_required</span><span class="p">(</span><span class="n">new_expl</span><span class="p">,</span> <span class="n">item</span><span class="p">)</span>
+                <span class="n">new_expl</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="se">\\</span><span class="s2">n&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">new_expl</span><span class="p">]</span>
+                <span class="n">res</span> <span class="o">=</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">~&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">new_expl</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">getvalue</span><span class="p">(</span><span class="s2">&quot;assertmode&quot;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;rewrite&quot;</span><span class="p">:</span>
+                    <span class="n">res</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;%&quot;</span><span class="p">,</span> <span class="s2">&quot;</span><span class="si">%%</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">res</span>
+
+    <span class="n">util</span><span class="o">.</span><span class="n">_reprcompare</span> <span class="o">=</span> <span class="n">callbinrepr</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_runtest_teardown</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="n">util</span><span class="o">.</span><span class="n">_reprcompare</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_sessionfinish</span><span class="p">(</span><span class="n">session</span><span class="p">):</span>
+    <span class="n">assertstate</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">session</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_assertstate&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">assertstate</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">assertstate</span><span class="o">.</span><span class="n">hook</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">assertstate</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">set_session</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+
+
+<span class="c1"># Expose this plugin&#39;s implementation for the pytest_assertrepr_compare hook</span>
+<span class="n">pytest_assertrepr_compare</span> <span class="o">=</span> <span class="n">util</span><span class="o">.</span><span class="n">assertrepr_compare</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

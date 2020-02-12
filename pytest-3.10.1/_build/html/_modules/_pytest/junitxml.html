@@ -1,0 +1,637 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.junitxml &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.junitxml</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    report test results in JUnit-XML format,</span>
+<span class="sd">    for use with Jenkins and build integration servers.</span>
+
+
+<span class="sd">Based on initial code from Ross Lawley.</span>
+
+<span class="sd">Output conforms to https://github.com/jenkinsci/xunit-plugin/blob/master/</span>
+<span class="sd">src/main/resources/org/jenkinsci/plugins/xunit/types/model/xsd/junit-10.xsd</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">functools</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="kn">import</span> <span class="nn">py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">_pytest</span> <span class="kn">import</span> <span class="n">nodes</span>
+<span class="kn">from</span> <span class="nn">_pytest.config</span> <span class="kn">import</span> <span class="n">filename_arg</span>
+
+<span class="c1"># Python 2.X and 3.X compatibility</span>
+<span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">3</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">codecs</span> <span class="kn">import</span> <span class="nb">open</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">unichr</span> <span class="o">=</span> <span class="nb">chr</span>
+    <span class="n">unicode</span> <span class="o">=</span> <span class="nb">str</span>
+    <span class="n">long</span> <span class="o">=</span> <span class="nb">int</span>
+
+
+<span class="k">class</span> <span class="nc">Junit</span><span class="p">(</span><span class="n">py</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">Namespace</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="c1"># We need to get the subset of the invalid unicode ranges according to</span>
+<span class="c1"># XML 1.0 which are valid in this python build.  Hence we calculate</span>
+<span class="c1"># this dynamically instead of hardcoding it.  The spec range of valid</span>
+<span class="c1"># chars is: Char ::= #x9 | #xA | #xD | [#x20-#xD7FF] | [#xE000-#xFFFD]</span>
+<span class="c1">#                    | [#x10000-#x10FFFF]</span>
+<span class="n">_legal_chars</span> <span class="o">=</span> <span class="p">(</span><span class="mh">0x09</span><span class="p">,</span> <span class="mh">0x0A</span><span class="p">,</span> <span class="mh">0x0D</span><span class="p">)</span>
+<span class="n">_legal_ranges</span> <span class="o">=</span> <span class="p">((</span><span class="mh">0x20</span><span class="p">,</span> <span class="mh">0x7E</span><span class="p">),</span> <span class="p">(</span><span class="mh">0x80</span><span class="p">,</span> <span class="mh">0xD7FF</span><span class="p">),</span> <span class="p">(</span><span class="mh">0xE000</span><span class="p">,</span> <span class="mh">0xFFFD</span><span class="p">),</span> <span class="p">(</span><span class="mh">0x10000</span><span class="p">,</span> <span class="mh">0x10FFFF</span><span class="p">))</span>
+<span class="n">_legal_xml_re</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">unicode</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%s</span><span class="s2">-</span><span class="si">%s</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="p">(</span><span class="n">unichr</span><span class="p">(</span><span class="n">low</span><span class="p">),</span> <span class="n">unichr</span><span class="p">(</span><span class="n">high</span><span class="p">))</span>
+    <span class="k">for</span> <span class="p">(</span><span class="n">low</span><span class="p">,</span> <span class="n">high</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_legal_ranges</span>
+    <span class="k">if</span> <span class="n">low</span> <span class="o">&lt;</span> <span class="n">sys</span><span class="o">.</span><span class="n">maxunicode</span>
+<span class="p">]</span>
+<span class="n">_legal_xml_re</span> <span class="o">=</span> <span class="p">[</span><span class="n">unichr</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">_legal_chars</span><span class="p">]</span> <span class="o">+</span> <span class="n">_legal_xml_re</span>
+<span class="n">illegal_xml_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">unicode</span><span class="p">(</span><span class="s2">&quot;[^</span><span class="si">%s</span><span class="s2">]&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="n">unicode</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_legal_xml_re</span><span class="p">))</span>
+<span class="k">del</span> <span class="n">_legal_chars</span>
+<span class="k">del</span> <span class="n">_legal_ranges</span>
+<span class="k">del</span> <span class="n">_legal_xml_re</span>
+
+<span class="n">_py_ext_re</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;\.py$&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">bin_xml_escape</span><span class="p">(</span><span class="n">arg</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">repl</span><span class="p">(</span><span class="n">matchobj</span><span class="p">):</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="nb">ord</span><span class="p">(</span><span class="n">matchobj</span><span class="o">.</span><span class="n">group</span><span class="p">())</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;=</span> <span class="mh">0xFF</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">unicode</span><span class="p">(</span><span class="s2">&quot;#x</span><span class="si">%02X</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="n">i</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">unicode</span><span class="p">(</span><span class="s2">&quot;#x</span><span class="si">%04X</span><span class="s2">&quot;</span><span class="p">)</span> <span class="o">%</span> <span class="n">i</span>
+
+    <span class="k">return</span> <span class="n">py</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">raw</span><span class="p">(</span><span class="n">illegal_xml_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="n">repl</span><span class="p">,</span> <span class="n">py</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">escape</span><span class="p">(</span><span class="n">arg</span><span class="p">)))</span>
+
+
+<span class="k">class</span> <span class="nc">_NodeReporter</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">xml</span><span class="p">):</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">id</span> <span class="o">=</span> <span class="n">nodeid</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xml</span> <span class="o">=</span> <span class="n">xml</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_stats</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">add_stats</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">duration</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">testcase</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">def</span> <span class="nf">append</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">node</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">add_stats</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">node</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">add_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">add_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">)]</span> <span class="o">=</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">make_properties_node</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a Junit node containing custom properties, if any.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Junit</span><span class="o">.</span><span class="n">properties</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">Junit</span><span class="o">.</span><span class="n">property</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">properties</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">record_testreport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">testreport</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">testcase</span>
+        <span class="n">names</span> <span class="o">=</span> <span class="n">mangle_test_address</span><span class="p">(</span><span class="n">testreport</span><span class="o">.</span><span class="n">nodeid</span><span class="p">)</span>
+        <span class="n">existing_attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span>
+        <span class="n">classnames</span> <span class="o">=</span> <span class="n">names</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">prefix</span><span class="p">:</span>
+            <span class="n">classnames</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">prefix</span><span class="p">)</span>
+        <span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;classname&quot;</span><span class="p">:</span> <span class="s2">&quot;.&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">classnames</span><span class="p">),</span>
+            <span class="s2">&quot;name&quot;</span><span class="p">:</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">names</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="s2">&quot;file&quot;</span><span class="p">:</span> <span class="n">testreport</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="k">if</span> <span class="n">testreport</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;line&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">testreport</span><span class="o">.</span><span class="n">location</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">testreport</span><span class="p">,</span> <span class="s2">&quot;url&quot;</span><span class="p">):</span>
+            <span class="n">attrs</span><span class="p">[</span><span class="s2">&quot;url&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">testreport</span><span class="o">.</span><span class="n">url</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span> <span class="o">=</span> <span class="n">attrs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">existing_attrs</span><span class="p">)</span>  <span class="c1"># restore any user-defined attributes</span>
+
+    <span class="k">def</span> <span class="nf">to_xml</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">testcase</span> <span class="o">=</span> <span class="n">Junit</span><span class="o">.</span><span class="n">testcase</span><span class="p">(</span><span class="n">time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">duration</span><span class="p">,</span> <span class="o">**</span><span class="bp">self</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">testcase</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">make_properties_node</span><span class="p">())</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">nodes</span><span class="p">:</span>
+            <span class="n">testcase</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">testcase</span>
+
+    <span class="k">def</span> <span class="nf">_add_simple</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="n">node</span> <span class="o">=</span> <span class="n">kind</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">node</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">write_captured_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="n">content_out</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">capstdout</span>
+        <span class="n">content_log</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">caplog</span>
+        <span class="n">content_err</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">capstderr</span>
+
+        <span class="k">if</span> <span class="n">content_log</span> <span class="ow">or</span> <span class="n">content_out</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">content_log</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">logging</span> <span class="o">==</span> <span class="s2">&quot;system-out&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">content_out</span><span class="p">:</span>
+                    <span class="c1"># syncing stdout and the log-output is not done yet. It&#39;s</span>
+                    <span class="c1"># probably not worth the effort. Therefore, first the captured</span>
+                    <span class="c1"># stdout is shown and then the captured logs.</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="s2">&quot; Captured Stdout &quot;</span><span class="o">.</span><span class="n">center</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+                            <span class="n">content_out</span><span class="p">,</span>
+                            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot; Captured Log &quot;</span><span class="o">.</span><span class="n">center</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+                            <span class="n">content_log</span><span class="p">,</span>
+                        <span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="n">content_log</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">content_out</span>
+
+            <span class="k">if</span> <span class="n">content</span><span class="p">:</span>
+                <span class="n">tag</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Junit</span><span class="p">,</span> <span class="s2">&quot;system-out&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag</span><span class="p">(</span><span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">content</span><span class="p">)))</span>
+
+        <span class="k">if</span> <span class="n">content_log</span> <span class="ow">or</span> <span class="n">content_err</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">content_log</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">logging</span> <span class="o">==</span> <span class="s2">&quot;system-err&quot;</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">content_err</span><span class="p">:</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                        <span class="p">[</span>
+                            <span class="s2">&quot; Captured Stderr &quot;</span><span class="o">.</span><span class="n">center</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+                            <span class="n">content_err</span><span class="p">,</span>
+                            <span class="s2">&quot;&quot;</span><span class="p">,</span>
+                            <span class="s2">&quot; Captured Log &quot;</span><span class="o">.</span><span class="n">center</span><span class="p">(</span><span class="mi">80</span><span class="p">,</span> <span class="s2">&quot;-&quot;</span><span class="p">),</span>
+                            <span class="n">content_log</span><span class="p">,</span>
+                        <span class="p">]</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">content</span> <span class="o">=</span> <span class="n">content_log</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">content</span> <span class="o">=</span> <span class="n">content_err</span>
+
+            <span class="k">if</span> <span class="n">content</span><span class="p">:</span>
+                <span class="n">tag</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">Junit</span><span class="p">,</span> <span class="s2">&quot;system-err&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tag</span><span class="p">(</span><span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">content</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">append_pass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_stats</span><span class="p">(</span><span class="s2">&quot;passed&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="c1"># msg = str(report.longrepr.reprtraceback.extraline)</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;wasxfail&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_simple</span><span class="p">(</span><span class="n">Junit</span><span class="o">.</span><span class="n">skipped</span><span class="p">,</span> <span class="s2">&quot;xfail-marked test passes unexpectedly&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">,</span> <span class="s2">&quot;reprcrash&quot;</span><span class="p">):</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="o">.</span><span class="n">reprcrash</span><span class="o">.</span><span class="n">message</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">,</span> <span class="p">(</span><span class="n">unicode</span><span class="p">,</span> <span class="nb">str</span><span class="p">)):</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">longrepr</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">)</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+            <span class="n">fail</span> <span class="o">=</span> <span class="n">Junit</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+            <span class="n">fail</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">fail</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append_collect_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="c1"># msg = str(report.longrepr.reprtraceback.extraline)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+            <span class="n">Junit</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;collection failure&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append_collect_skipped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_simple</span><span class="p">(</span><span class="n">Junit</span><span class="o">.</span><span class="n">skipped</span><span class="p">,</span> <span class="s2">&quot;collection skipped&quot;</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;when&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;teardown&quot;</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;test teardown failure&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;test setup failure&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_add_simple</span><span class="p">(</span><span class="n">Junit</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="n">msg</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">longrepr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">append_skipped</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;wasxfail&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_add_simple</span><span class="p">(</span><span class="n">Junit</span><span class="o">.</span><span class="n">skipped</span><span class="p">,</span> <span class="s2">&quot;expected test failure&quot;</span><span class="p">,</span> <span class="n">report</span><span class="o">.</span><span class="n">wasxfail</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">skipreason</span> <span class="o">=</span> <span class="n">report</span><span class="o">.</span><span class="n">longrepr</span>
+            <span class="k">if</span> <span class="n">skipreason</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;Skipped: &quot;</span><span class="p">):</span>
+                <span class="n">skipreason</span> <span class="o">=</span> <span class="n">skipreason</span><span class="p">[</span><span class="mi">9</span><span class="p">:]</span>
+            <span class="n">details</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2">:</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">filename</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">skipreason</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">Junit</span><span class="o">.</span><span class="n">skipped</span><span class="p">(</span>
+                    <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">details</span><span class="p">),</span>
+                    <span class="nb">type</span><span class="o">=</span><span class="s2">&quot;pytest.skip&quot;</span><span class="p">,</span>
+                    <span class="n">message</span><span class="o">=</span><span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">skipreason</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">write_captured_output</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_xml</span><span class="p">()</span><span class="o">.</span><span class="n">unicode</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">to_xml</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">py</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="n">raw</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="record_property"><a class="viewcode-back" href="../../reference.html#_pytest.junitxml.record_property">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">record_property</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add an extra properties the calling test.</span>
+<span class="sd">    User properties become part of the test report and are available to the</span>
+<span class="sd">    configured reporters, like JUnit XML.</span>
+<span class="sd">    The fixture is callable with ``(name, value)``, with value being automatically</span>
+<span class="sd">    xml-encoded.</span>
+
+<span class="sd">    Example::</span>
+
+<span class="sd">        def test_function(record_property):</span>
+<span class="sd">            record_property(&quot;example_key&quot;, 1)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">append_property</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">user_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">append_property</span></div>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">record_xml_property</span><span class="p">(</span><span class="n">record_property</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;(Deprecated) use record_property.&quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">_pytest</span> <span class="kn">import</span> <span class="n">deprecated</span>
+
+    <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">deprecated</span><span class="o">.</span><span class="n">RECORD_XML_PROPERTY</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">record_property</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">record_xml_attribute</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Add extra xml attributes to the tag for the calling test.</span>
+<span class="sd">    The fixture is callable with ``(name, value)``, with value being</span>
+<span class="sd">    automatically xml-encoded</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span> <span class="nn">_pytest.warning_types</span> <span class="kn">import</span> <span class="n">PytestWarning</span>
+
+    <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">PytestWarning</span><span class="p">(</span><span class="s2">&quot;record_xml_attribute is an experimental feature&quot;</span><span class="p">))</span>
+    <span class="n">xml</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_xml&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">xml</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">node_reporter</span> <span class="o">=</span> <span class="n">xml</span><span class="o">.</span><span class="n">node_reporter</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nodeid</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">node_reporter</span><span class="o">.</span><span class="n">add_attribute</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">def</span> <span class="nf">add_attr_noop</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+            <span class="k">pass</span>
+
+        <span class="k">return</span> <span class="n">add_attr_noop</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">getgroup</span><span class="p">(</span><span class="s2">&quot;terminal reporting&quot;</span><span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--junitxml&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--junit-xml&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;xmlpath&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;path&quot;</span><span class="p">,</span>
+        <span class="nb">type</span><span class="o">=</span><span class="n">functools</span><span class="o">.</span><span class="n">partial</span><span class="p">(</span><span class="n">filename_arg</span><span class="p">,</span> <span class="n">optname</span><span class="o">=</span><span class="s2">&quot;--junitxml&quot;</span><span class="p">),</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;create junit-xml style report file at given path.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--junitprefix&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;--junit-prefix&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;str&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;prepend prefix to classnames in junit-xml output&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addini</span><span class="p">(</span>
+        <span class="s2">&quot;junit_suite_name&quot;</span><span class="p">,</span> <span class="s2">&quot;Test suite name for JUnit report&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;pytest&quot;</span>
+    <span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addini</span><span class="p">(</span>
+        <span class="s2">&quot;junit_logging&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;Write captured log messages to JUnit report: &quot;</span>
+        <span class="s2">&quot;one of no|system-out|system-err&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">,</span>
+    <span class="p">)</span>  <span class="c1"># choices=[&#39;no&#39;, &#39;stdout&#39;, &#39;stderr&#39;])</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">xmlpath</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">xmlpath</span>
+    <span class="c1"># prevent opening xmllog on slave nodes (xdist)</span>
+    <span class="k">if</span> <span class="n">xmlpath</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;slaveinput&quot;</span><span class="p">):</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">_xml</span> <span class="o">=</span> <span class="n">LogXML</span><span class="p">(</span>
+            <span class="n">xmlpath</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">junitprefix</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">getini</span><span class="p">(</span><span class="s2">&quot;junit_suite_name&quot;</span><span class="p">),</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">getini</span><span class="p">(</span><span class="s2">&quot;junit_logging&quot;</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">pluginmanager</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">_xml</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_unconfigure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">xml</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_xml&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">xml</span><span class="p">:</span>
+        <span class="k">del</span> <span class="n">config</span><span class="o">.</span><span class="n">_xml</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">pluginmanager</span><span class="o">.</span><span class="n">unregister</span><span class="p">(</span><span class="n">xml</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">mangle_test_address</span><span class="p">(</span><span class="n">address</span><span class="p">):</span>
+    <span class="n">path</span><span class="p">,</span> <span class="n">possible_open_bracket</span><span class="p">,</span> <span class="n">params</span> <span class="o">=</span> <span class="n">address</span><span class="o">.</span><span class="n">partition</span><span class="p">(</span><span class="s2">&quot;[&quot;</span><span class="p">)</span>
+    <span class="n">names</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;::&quot;</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">names</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="s2">&quot;()&quot;</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+        <span class="k">pass</span>
+    <span class="c1"># convert file path to dotted path</span>
+    <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">nodes</span><span class="o">.</span><span class="n">SEP</span><span class="p">,</span> <span class="s2">&quot;.&quot;</span><span class="p">)</span>
+    <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">_py_ext_re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">names</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="c1"># put any params back</span>
+    <span class="n">names</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+=</span> <span class="n">possible_open_bracket</span> <span class="o">+</span> <span class="n">params</span>
+    <span class="k">return</span> <span class="n">names</span>
+
+
+<span class="k">class</span> <span class="nc">LogXML</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logfile</span><span class="p">,</span> <span class="n">prefix</span><span class="p">,</span> <span class="n">suite_name</span><span class="o">=</span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span> <span class="n">logging</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">):</span>
+        <span class="n">logfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expandvars</span><span class="p">(</span><span class="n">logfile</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logfile</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">normpath</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="n">logfile</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">prefix</span> <span class="o">=</span> <span class="n">prefix</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suite_name</span> <span class="o">=</span> <span class="n">suite_name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logging</span> <span class="o">=</span> <span class="n">logging</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stats</span> <span class="o">=</span> <span class="nb">dict</span><span class="o">.</span><span class="n">fromkeys</span><span class="p">([</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;passed&quot;</span><span class="p">,</span> <span class="s2">&quot;failure&quot;</span><span class="p">,</span> <span class="s2">&quot;skipped&quot;</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># nodeid -&gt; _NodeReporter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters_ordered</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_properties</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># List of reports that failed on call but teardown is pending.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">open_reports</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cnt_double_fail_tests</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">finalize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="n">nodeid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;nodeid&quot;</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+        <span class="c1"># local hack to handle xdist report order</span>
+        <span class="n">slavenode</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters</span><span class="o">.</span><span class="n">pop</span><span class="p">((</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">slavenode</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">reporter</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">reporter</span><span class="o">.</span><span class="n">finalize</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">node_reporter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="n">nodeid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;nodeid&quot;</span><span class="p">,</span> <span class="n">report</span><span class="p">)</span>
+        <span class="c1"># local hack to handle xdist report order</span>
+        <span class="n">slavenode</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;node&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="n">key</span> <span class="o">=</span> <span class="n">nodeid</span><span class="p">,</span> <span class="n">slavenode</span>
+
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters</span><span class="p">:</span>
+            <span class="c1"># TODO: breasks for --dist=each</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+        <span class="n">reporter</span> <span class="o">=</span> <span class="n">_NodeReporter</span><span class="p">(</span><span class="n">nodeid</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">reporter</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters_ordered</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reporter</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">reporter</span>
+
+    <span class="k">def</span> <span class="nf">add_stats</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">_opentestcase</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporter</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="n">reporter</span><span class="o">.</span><span class="n">record_testreport</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">reporter</span>
+
+    <span class="k">def</span> <span class="nf">pytest_runtest_logreport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;handle a setup/call/teardown report, generating the appropriate</span>
+<span class="sd">        xml tags as necessary.</span>
+
+<span class="sd">        note: due to plugins like xdist, this hook may be called in interlaced</span>
+<span class="sd">        order with reports from other nodes. for example:</span>
+
+<span class="sd">        usual call order:</span>
+<span class="sd">            -&gt; setup node1</span>
+<span class="sd">            -&gt; call node1</span>
+<span class="sd">            -&gt; teardown node1</span>
+<span class="sd">            -&gt; setup node2</span>
+<span class="sd">            -&gt; call node2</span>
+<span class="sd">            -&gt; teardown node2</span>
+
+<span class="sd">        possible call order in xdist:</span>
+<span class="sd">            -&gt; setup node1</span>
+<span class="sd">            -&gt; call node1</span>
+<span class="sd">            -&gt; setup node2</span>
+<span class="sd">            -&gt; call node2</span>
+<span class="sd">            -&gt; teardown node2</span>
+<span class="sd">            -&gt; teardown node1</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">close_report</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">when</span> <span class="o">==</span> <span class="s2">&quot;call&quot;</span><span class="p">:</span>  <span class="c1"># ignore setup/teardown</span>
+                <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opentestcase</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">append_pass</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">report</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">when</span> <span class="o">==</span> <span class="s2">&quot;teardown&quot;</span><span class="p">:</span>
+                <span class="c1"># The following vars are needed when xdist plugin is used</span>
+                <span class="n">report_wid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;worker_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">report_ii</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;item_index&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="n">close_report</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="n">rep</span>
+                        <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_reports</span>
+                        <span class="k">if</span> <span class="p">(</span>
+                            <span class="n">rep</span><span class="o">.</span><span class="n">nodeid</span> <span class="o">==</span> <span class="n">report</span><span class="o">.</span><span class="n">nodeid</span>
+                            <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rep</span><span class="p">,</span> <span class="s2">&quot;item_index&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">report_ii</span>
+                            <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rep</span><span class="p">,</span> <span class="s2">&quot;worker_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">report_wid</span>
+                        <span class="p">)</span>
+                    <span class="p">),</span>
+                    <span class="kc">None</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">close_report</span><span class="p">:</span>
+                    <span class="c1"># We need to open new testcase in case we have failure in</span>
+                    <span class="c1"># call and error in teardown in order to follow junit</span>
+                    <span class="c1"># schema</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">close_report</span><span class="p">)</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">cnt_double_fail_tests</span> <span class="o">+=</span> <span class="mi">1</span>
+            <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opentestcase</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">when</span> <span class="o">==</span> <span class="s2">&quot;call&quot;</span><span class="p">:</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">append_failure</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">open_reports</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">append_error</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">report</span><span class="o">.</span><span class="n">skipped</span><span class="p">:</span>
+            <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opentestcase</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="n">reporter</span><span class="o">.</span><span class="n">append_skipped</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">update_testcase_duration</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">when</span> <span class="o">==</span> <span class="s2">&quot;teardown&quot;</span><span class="p">:</span>
+            <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opentestcase</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="n">reporter</span><span class="o">.</span><span class="n">write_captured_output</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">propname</span><span class="p">,</span> <span class="n">propvalue</span> <span class="ow">in</span> <span class="n">report</span><span class="o">.</span><span class="n">user_properties</span><span class="p">:</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">add_property</span><span class="p">(</span><span class="n">propname</span><span class="p">,</span> <span class="n">propvalue</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">finalize</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="n">report_wid</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;worker_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">report_ii</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;item_index&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="n">close_report</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span>
+                <span class="p">(</span>
+                    <span class="n">rep</span>
+                    <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">open_reports</span>
+                    <span class="k">if</span> <span class="p">(</span>
+                        <span class="n">rep</span><span class="o">.</span><span class="n">nodeid</span> <span class="o">==</span> <span class="n">report</span><span class="o">.</span><span class="n">nodeid</span>
+                        <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rep</span><span class="p">,</span> <span class="s2">&quot;item_index&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">report_ii</span>
+                        <span class="ow">and</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">rep</span><span class="p">,</span> <span class="s2">&quot;worker_id&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">report_wid</span>
+                    <span class="p">)</span>
+                <span class="p">),</span>
+                <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">close_report</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">open_reports</span><span class="o">.</span><span class="n">remove</span><span class="p">(</span><span class="n">close_report</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">update_testcase_duration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;accumulates total duration for nodeid from given report and updates</span>
+<span class="sd">        the Junit.testcase with the new total if already created.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporter</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+        <span class="n">reporter</span><span class="o">.</span><span class="n">duration</span> <span class="o">+=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="s2">&quot;duration&quot;</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">pytest_collectreport</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">report</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">report</span><span class="o">.</span><span class="n">passed</span><span class="p">:</span>
+            <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_opentestcase</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">append_collect_error</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">reporter</span><span class="o">.</span><span class="n">append_collect_skipped</span><span class="p">(</span><span class="n">report</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">pytest_internalerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excrepr</span><span class="p">):</span>
+        <span class="n">reporter</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporter</span><span class="p">(</span><span class="s2">&quot;internal&quot;</span><span class="p">)</span>
+        <span class="n">reporter</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">classname</span><span class="o">=</span><span class="s2">&quot;pytest&quot;</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;internal&quot;</span><span class="p">)</span>
+        <span class="n">reporter</span><span class="o">.</span><span class="n">_add_simple</span><span class="p">(</span><span class="n">Junit</span><span class="o">.</span><span class="n">error</span><span class="p">,</span> <span class="s2">&quot;internal error&quot;</span><span class="p">,</span> <span class="n">excrepr</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">pytest_sessionstart</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suite_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">pytest_sessionfinish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">dirname</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">abspath</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logfile</span><span class="p">))</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">dirname</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">dirname</span><span class="p">)</span>
+        <span class="n">logfile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logfile</span><span class="p">,</span> <span class="s2">&quot;w&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="n">suite_stop_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">suite_time_delta</span> <span class="o">=</span> <span class="n">suite_stop_time</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">suite_start_time</span>
+
+        <span class="n">numtests</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;passed&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;failure&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;skipped&quot;</span><span class="p">]</span>
+            <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span>
+            <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">cnt_double_fail_tests</span>
+        <span class="p">)</span>
+        <span class="n">logfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s1">&#39;&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot;?&gt;&#39;</span><span class="p">)</span>
+
+        <span class="n">logfile</span><span class="o">.</span><span class="n">write</span><span class="p">(</span>
+            <span class="n">Junit</span><span class="o">.</span><span class="n">testsuite</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_get_global_properties_node</span><span class="p">(),</span>
+                <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">to_xml</span><span class="p">()</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">node_reporters_ordered</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">suite_name</span><span class="p">,</span>
+                <span class="n">errors</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">],</span>
+                <span class="n">failures</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;failure&quot;</span><span class="p">],</span>
+                <span class="n">skips</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="s2">&quot;skipped&quot;</span><span class="p">],</span>
+                <span class="n">tests</span><span class="o">=</span><span class="n">numtests</span><span class="p">,</span>
+                <span class="n">time</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%.3f</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">suite_time_delta</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">unicode</span><span class="p">(</span><span class="n">indent</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">logfile</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">pytest_terminal_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">terminalreporter</span><span class="p">):</span>
+        <span class="n">terminalreporter</span><span class="o">.</span><span class="n">write_sep</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">,</span> <span class="s2">&quot;generated xml file: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">logfile</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">add_global_property</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">global_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">bin_xml_escape</span><span class="p">(</span><span class="n">value</span><span class="p">)))</span>
+
+    <span class="k">def</span> <span class="nf">_get_global_properties_node</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Return a Junit node containing custom properties, if any.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_properties</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">Junit</span><span class="o">.</span><span class="n">properties</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">Junit</span><span class="o">.</span><span class="n">property</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">global_properties</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="s2">&quot;&quot;</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

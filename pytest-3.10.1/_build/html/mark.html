@@ -1,0 +1,200 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Marking test functions with attributes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Monkeypatching/mocking modules and environments" href="monkeypatch.html" />
+    <link rel="prev" title="pytest fixtures: explicit, modular, scalable" href="fixture.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="monkeypatch.html" title="Monkeypatching/mocking modules and environments"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="fixture.html" title="pytest fixtures: explicit, modular, scalable"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="marking-test-functions-with-attributes">
+<span id="mark"></span><h1>Marking test functions with attributes<a class="headerlink" href="#marking-test-functions-with-attributes" title="Permalink to this headline">¶</a></h1>
+<p>By using the <code class="docutils literal notranslate"><span class="pre">pytest.mark</span></code> helper you can easily set
+metadata on your test functions. There are
+some builtin markers, for example:</p>
+<ul class="simple">
+<li><a class="reference internal" href="skipping.html#skip"><span class="std std-ref">skip</span></a> - always skip a test function</li>
+<li><a class="reference internal" href="skipping.html#skipif"><span class="std std-ref">skipif</span></a> - skip a test function if a certain condition is met</li>
+<li><a class="reference internal" href="skipping.html#xfail"><span class="std std-ref">xfail</span></a> - produce an “expected failure” outcome if a certain
+condition is met</li>
+<li><a class="reference internal" href="parametrize.html#parametrizemark"><span class="std std-ref">parametrize</span></a> to perform multiple calls
+to the same test function.</li>
+</ul>
+<p>It’s easy to create custom markers or to apply markers
+to whole test classes or modules. See <a class="reference internal" href="example/markers.html#mark-examples"><span class="std std-ref">Working with custom markers</span></a> for examples
+which also serve as documentation.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Marks can only be applied to tests, having no effect on
+<a class="reference internal" href="fixture.html#fixtures"><span class="std std-ref">fixtures</span></a>.</p>
+</div>
+<div class="section" id="raising-errors-on-unknown-marks-strict">
+<h2>Raising errors on unknown marks: –strict<a class="headerlink" href="#raising-errors-on-unknown-marks-strict" title="Permalink to this headline">¶</a></h2>
+<p>When the <code class="docutils literal notranslate"><span class="pre">--strict</span></code> command-line flag is passed, any marks not registered in the <code class="docutils literal notranslate"><span class="pre">pytest.ini</span></code> file will trigger an error.</p>
+<p>Marks can be registered like this:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+<span class="na">markers</span> <span class="o">=</span><span class="s"></span>
+<span class="s">    slow</span>
+<span class="s">    serial</span>
+</pre></div>
+</div>
+<p>This can be used to prevent users mistyping mark names by accident. Test suites that want to enforce this
+should add <code class="docutils literal notranslate"><span class="pre">--strict</span></code> to <code class="docutils literal notranslate"><span class="pre">addopts</span></code>:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+<span class="na">addopts</span> <span class="o">=</span> <span class="s">--strict</span>
+<span class="na">markers</span> <span class="o">=</span><span class="s"></span>
+<span class="s">    slow</span>
+<span class="s">    serial</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="marker-revamp-and-iteration">
+<span id="marker-revamp"></span><h2>Marker revamp and iteration<a class="headerlink" href="#marker-revamp-and-iteration" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.6.</span></p>
+</div>
+<p>pytest’s marker implementation traditionally worked by simply updating the <code class="docutils literal notranslate"><span class="pre">__dict__</span></code> attribute of functions to cumulatively add markers. As a result, markers would unintentionally be passed along class hierarchies in surprising ways. Further, the API for retrieving them was inconsistent, as markers from parameterization would be stored differently than markers applied using the <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark</span></code> decorator and markers added via <code class="docutils literal notranslate"><span class="pre">node.add_marker</span></code>.</p>
+<p>This state of things made it technically next to impossible to use data from markers correctly without having a deep understanding of the internals, leading to subtle and hard to understand bugs in more advanced usages.</p>
+<p>Depending on how a marker got declared/changed one would get either a <code class="docutils literal notranslate"><span class="pre">MarkerInfo</span></code> which might contain markers from sibling classes,
+<code class="docutils literal notranslate"><span class="pre">MarkDecorators</span></code> when marks came from parameterization or from a <code class="docutils literal notranslate"><span class="pre">node.add_marker</span></code> call, discarding prior marks. Also <code class="docutils literal notranslate"><span class="pre">MarkerInfo</span></code> acts like a single mark, when it in fact represents a merged view on multiple marks with the same name.</p>
+<p>On top of that markers were not accessible the same way for modules, classes, and functions/methods.
+In fact, markers were only accessible in functions, even if they were declared on classes/modules.</p>
+<p>A new API to access markers has been introduced in pytest 3.6 in order to solve the problems with the initial design, providing <a class="reference internal" href="reference.html#_pytest.nodes.Node.iter_markers" title="_pytest.nodes.Node.iter_markers"><code class="xref py py-func docutils literal notranslate"><span class="pre">_pytest.nodes.Node.iter_markers()</span></code></a> method to iterate over markers in a consistent manner and reworking the internals, which solved great deal of problems with the initial design.</p>
+<div class="section" id="updating-code">
+<span id="update-marker-code"></span><h3>Updating code<a class="headerlink" href="#updating-code" title="Permalink to this headline">¶</a></h3>
+<p>The old <code class="docutils literal notranslate"><span class="pre">Node.get_marker(name)</span></code> function is considered deprecated because it returns an internal <code class="docutils literal notranslate"><span class="pre">MarkerInfo</span></code> object
+which contains the merged name, <code class="docutils literal notranslate"><span class="pre">*args</span></code> and <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> of all the markers which apply to that node.</p>
+<p>In general there are two scenarios on how markers should be handled:</p>
+<p>1. Marks overwrite each other. Order matters but you only want to think of your mark as a single item. E.g.
+<code class="docutils literal notranslate"><span class="pre">log_level('info')</span></code> at a module level can be overwritten by <code class="docutils literal notranslate"><span class="pre">log_level('debug')</span></code> for a specific test.</p>
+<blockquote>
+<div><p>In this case, use <code class="docutils literal notranslate"><span class="pre">Node.get_closest_marker(name)</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># replace this:</span>
+<span class="n">marker</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get_marker</span><span class="p">(</span><span class="s2">&quot;log_level&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">marker</span><span class="p">:</span>
+    <span class="n">level</span> <span class="o">=</span> <span class="n">marker</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+<span class="c1"># by this:</span>
+<span class="n">marker</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get_closest_marker</span><span class="p">(</span><span class="s2">&quot;log_level&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">marker</span><span class="p">:</span>
+    <span class="n">level</span> <span class="o">=</span> <span class="n">marker</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>2. Marks compose in an additive manner. E.g. <code class="docutils literal notranslate"><span class="pre">skipif(condition)</span></code> marks mean you just want to evaluate all of them,
+order doesn’t even matter. You probably want to think of your marks as a set here.</p>
+<blockquote>
+<div><p>In this case iterate over each mark and handle their <code class="docutils literal notranslate"><span class="pre">*args</span></code> and <code class="docutils literal notranslate"><span class="pre">**kwargs</span></code> individually.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># replace this</span>
+<span class="n">skipif</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get_marker</span><span class="p">(</span><span class="s2">&quot;skipif&quot;</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">skipif</span><span class="p">:</span>
+    <span class="k">for</span> <span class="n">condition</span> <span class="ow">in</span> <span class="n">skipif</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+        <span class="c1"># eval condition</span>
+        <span class="o">...</span>
+
+<span class="c1"># by this:</span>
+<span class="k">for</span> <span class="n">skipif</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="s2">&quot;skipif&quot;</span><span class="p">):</span>
+    <span class="n">condition</span> <span class="o">=</span> <span class="n">skipif</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c1"># eval condition</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>If you are unsure or have any questions, please consider opening
+<a class="reference external" href="https://github.com/pytest-dev/pytest/issues">an issue</a>.</p>
+</div>
+<div class="section" id="related-issues">
+<h3>Related issues<a class="headerlink" href="#related-issues" title="Permalink to this headline">¶</a></h3>
+<p>Here is a non-exhaustive list of issues fixed by the new implementation:</p>
+<ul class="simple">
+<li>Marks don’t pick up nested classes (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/199">#199</a>).</li>
+<li>Markers stain on all related classes (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/568">#568</a>).</li>
+<li>Combining marks - args and kwargs calculation (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/2897">#2897</a>).</li>
+<li><code class="docutils literal notranslate"><span class="pre">request.node.get_marker('name')</span></code> returns <code class="docutils literal notranslate"><span class="pre">None</span></code> for markers applied in classes (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/902">#902</a>).</li>
+<li>Marks applied in parametrize are stored as markdecorator (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/2400">#2400</a>).</li>
+<li>Fix marker interaction in a backward incompatible way (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1670">#1670</a>).</li>
+<li>Refactor marks to get rid of the current “marks transfer” mechanism (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/2363">#2363</a>).</li>
+<li>Introduce FunctionDefinition node, use it in generate_tests (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/2522">#2522</a>).</li>
+<li>Remove named marker attributes and collect markers in items (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/891">#891</a>).</li>
+<li>skipif mark from parametrize hides module level skipif mark (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1540">#1540</a>).</li>
+<li>skipif + parametrize not skipping tests (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1296">#1296</a>).</li>
+<li>Marker transfer incompatible with inheritance (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/535">#535</a>).</li>
+</ul>
+<p>More details can be found in the <a class="reference external" href="https://github.com/pytest-dev/pytest/pull/3317">original PR</a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">in a future major relase of pytest we will introduce class based markers,
+at which points markers will no longer be limited to instances of <code class="xref py py-class docutils literal notranslate"><span class="pre">Mark</span></code></p>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="monkeypatch.html" title="Monkeypatching/mocking modules and environments"
+             >next</a></li>
+        <li class="right" >
+          <a href="fixture.html" title="pytest fixtures: explicit, modular, scalable"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

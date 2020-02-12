@@ -1,0 +1,383 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Contribution getting started &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Development Guide" href="development_guide.html" />
+    <link rel="prev" title="License" href="license.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="development_guide.html" title="Development Guide"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="license.html" title="License"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="contribution-getting-started">
+<span id="contributing"></span><h1><a class="toc-backref" href="#id3">Contribution getting started</a><a class="headerlink" href="#contribution-getting-started" title="Permalink to this headline">¶</a></h1>
+<p>Contributions are highly welcomed and appreciated.  Every little help counts,
+so do not hesitate!</p>
+<div class="contents topic" id="contribution-links">
+<p class="topic-title">Contribution links</p>
+<ul class="simple">
+<li><a class="reference internal" href="#contribution-getting-started" id="id3">Contribution getting started</a><ul>
+<li><a class="reference internal" href="#feature-requests-and-feedback" id="id4">Feature requests and feedback</a></li>
+<li><a class="reference internal" href="#report-bugs" id="id5">Report bugs</a></li>
+<li><a class="reference internal" href="#fix-bugs" id="id6">Fix bugs</a></li>
+<li><a class="reference internal" href="#implement-features" id="id7">Implement features</a></li>
+<li><a class="reference internal" href="#write-documentation" id="id8">Write documentation</a></li>
+<li><a class="reference internal" href="#submitting-plugins-to-pytest-dev" id="id9">Submitting Plugins to pytest-dev</a></li>
+<li><a class="reference internal" href="#preparing-pull-requests" id="id10">Preparing Pull Requests</a></li>
+<li><a class="reference internal" href="#writing-tests" id="id11">Writing Tests</a></li>
+<li><a class="reference internal" href="#joining-the-development-team" id="id12">Joining the Development Team</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="section" id="feature-requests-and-feedback">
+<span id="submitfeedback"></span><h2><a class="toc-backref" href="#id4">Feature requests and feedback</a><a class="headerlink" href="#feature-requests-and-feedback" title="Permalink to this headline">¶</a></h2>
+<p>Do you like pytest?  Share some love on Twitter or in your blog posts!</p>
+<p>We’d also like to hear about your propositions and suggestions.  Feel free to
+<a class="reference external" href="https://github.com/pytest-dev/pytest/issues">submit them as issues</a> and:</p>
+<ul class="simple">
+<li>Explain in detail how they should work.</li>
+<li>Keep the scope as narrow as possible.  This will make it easier to implement.</li>
+</ul>
+</div>
+<div class="section" id="report-bugs">
+<span id="reportbugs"></span><h2><a class="toc-backref" href="#id5">Report bugs</a><a class="headerlink" href="#report-bugs" title="Permalink to this headline">¶</a></h2>
+<p>Report bugs for pytest in the <a class="reference external" href="https://github.com/pytest-dev/pytest/issues">issue tracker</a>.</p>
+<p>If you are reporting a bug, please include:</p>
+<ul class="simple">
+<li>Your operating system name and version.</li>
+<li>Any details about your local setup that might be helpful in troubleshooting,
+specifically the Python interpreter version, installed libraries, and pytest
+version.</li>
+<li>Detailed steps to reproduce the bug.</li>
+</ul>
+<p>If you can write a demonstration test that currently fails but should pass
+(xfail), that is a very useful commit to make as well, even if you cannot
+fix the bug itself.</p>
+</div>
+<div class="section" id="fix-bugs">
+<span id="fixbugs"></span><h2><a class="toc-backref" href="#id6">Fix bugs</a><a class="headerlink" href="#fix-bugs" title="Permalink to this headline">¶</a></h2>
+<p>Look through the <a class="reference external" href="https://github.com/pytest-dev/pytest/labels/type:%20bug">GitHub issues for bugs</a>.</p>
+<p><a class="reference internal" href="contact.html#contact"><span class="std std-ref">Talk</span></a> to developers to find out how you can fix specific bugs.</p>
+<p>Don’t forget to check the issue trackers of your favourite plugins, too!</p>
+</div>
+<div class="section" id="implement-features">
+<span id="writeplugins"></span><h2><a class="toc-backref" href="#id7">Implement features</a><a class="headerlink" href="#implement-features" title="Permalink to this headline">¶</a></h2>
+<p>Look through the <a class="reference external" href="https://github.com/pytest-dev/pytest/labels/type:%20enhancement">GitHub issues for enhancements</a>.</p>
+<p><a class="reference internal" href="contact.html#contact"><span class="std std-ref">Talk</span></a> to developers to find out how you can implement specific
+features.</p>
+</div>
+<div class="section" id="write-documentation">
+<h2><a class="toc-backref" href="#id8">Write documentation</a><a class="headerlink" href="#write-documentation" title="Permalink to this headline">¶</a></h2>
+<p>Pytest could always use more documentation.  What exactly is needed?</p>
+<ul class="simple">
+<li>More complementary documentation.  Have you perhaps found something unclear?</li>
+<li>Documentation translations.  We currently have only English.</li>
+<li>Docstrings.  There can never be too many of them.</li>
+<li>Blog posts, articles and such – they’re all very appreciated.</li>
+</ul>
+<p>You can also edit documentation files directly in the GitHub web interface,
+without using a local copy.  This can be convenient for small fixes.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Build the documentation locally with the following command:</p>
+<div class="code bash highlight-default notranslate"><div class="highlight"><pre><span></span>$ tox -e docs
+</pre></div>
+</div>
+<p>The built documentation should be available in the <code class="docutils literal notranslate"><span class="pre">doc/en/_build/</span></code>.</p>
+<p class="last">Where ‘en’ refers to the documentation language.</p>
+</div>
+</div>
+<div class="section" id="submitting-plugins-to-pytest-dev">
+<span id="submitplugin"></span><h2><a class="toc-backref" href="#id9">Submitting Plugins to pytest-dev</a><a class="headerlink" href="#submitting-plugins-to-pytest-dev" title="Permalink to this headline">¶</a></h2>
+<p>Pytest development of the core, some plugins and support code happens
+in repositories living under the <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> organisations:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/pytest-dev">pytest-dev on GitHub</a></li>
+<li><a class="reference external" href="https://bitbucket.org/pytest-dev">pytest-dev on Bitbucket</a></li>
+</ul>
+<p>All pytest-dev Contributors team members have write access to all contained
+repositories.  Pytest core and plugins are generally developed
+using <a class="reference internal" href="#pull-requests">pull requests</a> to respective repositories.</p>
+<p>The objectives of the <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> organisation are:</p>
+<ul class="simple">
+<li>Having a central location for popular pytest plugins</li>
+<li>Sharing some of the maintenance responsibility (in case a maintainer no
+longer wishes to maintain a plugin)</li>
+</ul>
+<p>You can submit your plugin by subscribing to the <a class="reference external" href="https://mail.python.org/mailman/listinfo/pytest-dev">pytest-dev mail list</a> and writing a
+mail pointing to your existing pytest plugin repository which must have
+the following:</p>
+<ul class="simple">
+<li>PyPI presence with a <code class="docutils literal notranslate"><span class="pre">setup.py</span></code> that contains a license, <code class="docutils literal notranslate"><span class="pre">pytest-</span></code>
+prefixed name, version number, authors, short and long description.</li>
+<li>a <code class="docutils literal notranslate"><span class="pre">tox.ini</span></code> for running tests using <a class="reference external" href="https://tox.readthedocs.io">tox</a>.</li>
+<li>a <code class="docutils literal notranslate"><span class="pre">README.txt</span></code> describing how to use the plugin and on which
+platforms it runs.</li>
+<li>a <code class="docutils literal notranslate"><span class="pre">LICENSE.txt</span></code> file or equivalent containing the licensing
+information, with matching info in <code class="docutils literal notranslate"><span class="pre">setup.py</span></code>.</li>
+<li>an issue tracker for bug reports and enhancement requests.</li>
+<li>a <a class="reference external" href="http://keepachangelog.com/">changelog</a></li>
+</ul>
+<p>If no contributor strongly objects and two agree, the repository can then be
+transferred to the <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> organisation.</p>
+<p>Here’s a rundown of how a repository transfer usually proceeds
+(using a repository named <code class="docutils literal notranslate"><span class="pre">joedoe/pytest-xyz</span></code> as example):</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">joedoe</span></code> transfers repository ownership to <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> administrator <code class="docutils literal notranslate"><span class="pre">calvin</span></code>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">calvin</span></code> creates <code class="docutils literal notranslate"><span class="pre">pytest-xyz-admin</span></code> and <code class="docutils literal notranslate"><span class="pre">pytest-xyz-developers</span></code> teams, inviting <code class="docutils literal notranslate"><span class="pre">joedoe</span></code> to both as <strong>maintainer</strong>.</li>
+<li><code class="docutils literal notranslate"><span class="pre">calvin</span></code> transfers repository to <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> and configures team access:<ul>
+<li><code class="docutils literal notranslate"><span class="pre">pytest-xyz-admin</span></code> <strong>admin</strong> access;</li>
+<li><code class="docutils literal notranslate"><span class="pre">pytest-xyz-developers</span></code> <strong>write</strong> access;</li>
+</ul>
+</li>
+</ul>
+<p>The <code class="docutils literal notranslate"><span class="pre">pytest-dev/Contributors</span></code> team has write access to all projects, and
+every project administrator is in it. We recommend that each plugin has at least three
+people who have the right to release to PyPI.</p>
+<p>Repository owners can rest assured that no <code class="docutils literal notranslate"><span class="pre">pytest-dev</span></code> administrator will ever make
+releases of your repository or take ownership in any way, except in rare cases
+where someone becomes unresponsive after months of contact attempts.
+As stated, the objective is to share maintenance and avoid “plugin-abandon”.</p>
+</div>
+<div class="section" id="preparing-pull-requests">
+<span id="id1"></span><span id="pull-requests"></span><h2><a class="toc-backref" href="#id10">Preparing Pull Requests</a><a class="headerlink" href="#preparing-pull-requests" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="short-version">
+<h3>Short version<a class="headerlink" href="#short-version" title="Permalink to this headline">¶</a></h3>
+<ol class="arabic">
+<li><p class="first">Fork the repository.</p>
+</li>
+<li><p class="first">Enable and install <a class="reference external" href="https://pre-commit.com">pre-commit</a> to ensure style-guides and code checks are followed.</p>
+</li>
+<li><p class="first">Target <code class="docutils literal notranslate"><span class="pre">master</span></code> for bugfixes and doc changes.</p>
+</li>
+<li><p class="first">Target <code class="docutils literal notranslate"><span class="pre">features</span></code> for new features or functionality changes.</p>
+</li>
+<li><p class="first">Follow <strong>PEP-8</strong> for naming and <a class="reference external" href="https://github.com/ambv/black">black</a> for formatting.</p>
+</li>
+<li><p class="first">Tests are run using <code class="docutils literal notranslate"><span class="pre">tox</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tox</span> <span class="o">-</span><span class="n">e</span> <span class="n">linting</span><span class="p">,</span><span class="n">py27</span><span class="p">,</span><span class="n">py36</span>
+</pre></div>
+</div>
+<p>The test environments above are usually enough to cover most cases locally.</p>
+</li>
+<li><p class="first">Write a <code class="docutils literal notranslate"><span class="pre">changelog</span></code> entry: <code class="docutils literal notranslate"><span class="pre">changelog/2574.bugfix</span></code>, use issue id number
+and one of <code class="docutils literal notranslate"><span class="pre">bugfix</span></code>, <code class="docutils literal notranslate"><span class="pre">removal</span></code>, <code class="docutils literal notranslate"><span class="pre">feature</span></code>, <code class="docutils literal notranslate"><span class="pre">vendor</span></code>, <code class="docutils literal notranslate"><span class="pre">doc</span></code> or
+<code class="docutils literal notranslate"><span class="pre">trivial</span></code> for the issue type.</p>
+</li>
+<li><p class="first">Unless your change is a trivial or a documentation fix (e.g., a typo or reword of a small section) please
+add yourself to the <code class="docutils literal notranslate"><span class="pre">AUTHORS</span></code> file, in alphabetical order.</p>
+</li>
+</ol>
+</div>
+<div class="section" id="long-version">
+<h3>Long version<a class="headerlink" href="#long-version" title="Permalink to this headline">¶</a></h3>
+<p>What is a “pull request”?  It informs the project’s core developers about the
+changes you want to review and merge.  Pull requests are stored on
+<a class="reference external" href="https://github.com/pytest-dev/pytest/pulls">GitHub servers</a>.
+Once you send a pull request, we can discuss its potential modifications and
+even add more commits to it later on. There’s an excellent tutorial on how Pull
+Requests work in the
+<a class="reference external" href="https://help.github.com/articles/using-pull-requests/">GitHub Help Center</a>.</p>
+<p>Here is a simple overview, with pytest-specific bits:</p>
+<ol class="arabic">
+<li><p class="first">Fork the
+<a class="reference external" href="https://github.com/pytest-dev/pytest">pytest GitHub repository</a>.  It’s
+fine to use <code class="docutils literal notranslate"><span class="pre">pytest</span></code> as your fork repository name because it will live
+under your user.</p>
+</li>
+<li><p class="first">Clone your fork locally using <a class="reference external" href="https://git-scm.com/">git</a> and create a branch:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git clone git@github.com:YOUR_GITHUB_USERNAME/pytest.git
+$ cd pytest
+# now, to fix a bug create your own branch off &quot;master&quot;:
+
+    $ git checkout -b your-bugfix-branch-name master
+
+# or to instead add a feature create your own branch off &quot;features&quot;:
+
+    $ git checkout -b your-feature-branch-name features
+</pre></div>
+</div>
+<p>Given we have “major.minor.micro” version numbers, bugfixes will usually
+be released in micro releases whereas features will be released in
+minor releases and incompatible changes in major releases.</p>
+<p>If you need some help with Git, follow this quick start
+guide: <a class="reference external" href="https://git.wiki.kernel.org/index.php/QuickStart">https://git.wiki.kernel.org/index.php/QuickStart</a></p>
+</li>
+<li><p class="first">Install <a class="reference external" href="https://pre-commit.com">pre-commit</a> and its hook on the pytest repo:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install --user pre-commit
+$ pre-commit install
+</pre></div>
+</div>
+<p>Afterwards <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> will run whenever you commit.</p>
+<p><a class="reference external" href="https://pre-commit.com/">https://pre-commit.com/</a> is a framework for managing and maintaining multi-language pre-commit hooks
+to ensure code-style and code formatting is consistent.</p>
+</li>
+<li><p class="first">Install tox</p>
+<p>Tox is used to run all the tests and will automatically setup virtualenvs
+to run the tests in.
+(will implicitly use <a class="reference external" href="http://www.virtualenv.org/en/latest/">http://www.virtualenv.org/en/latest/</a>):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pip install tox
+</pre></div>
+</div>
+</li>
+<li><p class="first">Run all the tests</p>
+<p>You need to have Python 2.7 and 3.6 available in your system.  Now
+running tests is as simple as issuing this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tox -e linting,py27,py36
+</pre></div>
+</div>
+<p>This command will run tests via the “tox” tool against Python 2.7 and 3.6
+and also perform “lint” coding-style checks.</p>
+</li>
+<li><p class="first">You can now edit your local working copy and run the tests again as necessary. Please follow PEP-8 for naming.</p>
+<p>You can pass different options to <code class="docutils literal notranslate"><span class="pre">tox</span></code>. For example, to run tests on Python 2.7 and pass options to pytest
+(e.g. enter pdb on failure) to pytest you can do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tox -e py27 -- --pdb
+</pre></div>
+</div>
+<p>Or to only run tests in a particular test module on Python 3.6:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tox -e py36 -- testing/test_config.py
+</pre></div>
+</div>
+<p>When committing, <code class="docutils literal notranslate"><span class="pre">pre-commit</span></code> will re-format the files if necessary.</p>
+</li>
+<li><p class="first">Commit and push once your tests pass and you are happy with your change(s):</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ git commit -a -m &quot;&lt;commit message&gt;&quot;
+$ git push -u
+</pre></div>
+</div>
+</li>
+<li><p class="first">Create a new changelog entry in <code class="docutils literal notranslate"><span class="pre">changelog</span></code>. The file should be named <code class="docutils literal notranslate"><span class="pre">&lt;issueid&gt;.&lt;type&gt;</span></code>,
+where <em>issueid</em> is the number of the issue related to the change and <em>type</em> is one of
+<code class="docutils literal notranslate"><span class="pre">bugfix</span></code>, <code class="docutils literal notranslate"><span class="pre">removal</span></code>, <code class="docutils literal notranslate"><span class="pre">feature</span></code>, <code class="docutils literal notranslate"><span class="pre">vendor</span></code>, <code class="docutils literal notranslate"><span class="pre">doc</span></code> or <code class="docutils literal notranslate"><span class="pre">trivial</span></code>.</p>
+</li>
+<li><p class="first">Add yourself to <code class="docutils literal notranslate"><span class="pre">AUTHORS</span></code> file if not there yet, in alphabetical order.</p>
+</li>
+<li><p class="first">Finally, submit a pull request through the GitHub website using this data:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">head</span><span class="o">-</span><span class="n">fork</span><span class="p">:</span> <span class="n">YOUR_GITHUB_USERNAME</span><span class="o">/</span><span class="n">pytest</span>
+<span class="n">compare</span><span class="p">:</span> <span class="n">your</span><span class="o">-</span><span class="n">branch</span><span class="o">-</span><span class="n">name</span>
+
+<span class="n">base</span><span class="o">-</span><span class="n">fork</span><span class="p">:</span> <span class="n">pytest</span><span class="o">-</span><span class="n">dev</span><span class="o">/</span><span class="n">pytest</span>
+<span class="n">base</span><span class="p">:</span> <span class="n">master</span>          <span class="c1"># if it&#39;s a bugfix</span>
+<span class="n">base</span><span class="p">:</span> <span class="n">features</span>        <span class="c1"># if it&#39;s a feature</span>
+</pre></div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+<div class="section" id="writing-tests">
+<h2><a class="toc-backref" href="#id11">Writing Tests</a><a class="headerlink" href="#writing-tests" title="Permalink to this headline">¶</a></h2>
+<p>Writing tests for plugins or for pytest itself is often done using the <a class="reference external" href="https://docs.pytest.org/en/latest/reference.html#testdir">testdir fixture</a>, as a “black-box” test.</p>
+<p>For example, to ensure a simple test passes you can write:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_true_assertion</span><span class="p">(</span><span class="n">testdir</span><span class="p">):</span>
+    <span class="n">testdir</span><span class="o">.</span><span class="n">makepyfile</span><span class="p">(</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        def test_foo():</span>
+<span class="sd">            assert True</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">testdir</span><span class="o">.</span><span class="n">runpytest</span><span class="p">()</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">assert_outcomes</span><span class="p">(</span><span class="n">failed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">passed</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Alternatively, it is possible to make checks based on the actual output of the termal using
+<em>glob-like</em> expressions:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_true_assertion</span><span class="p">(</span><span class="n">testdir</span><span class="p">):</span>
+    <span class="n">testdir</span><span class="o">.</span><span class="n">makepyfile</span><span class="p">(</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        def test_foo():</span>
+<span class="sd">            assert False</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">testdir</span><span class="o">.</span><span class="n">runpytest</span><span class="p">()</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">fnmatch_lines</span><span class="p">([</span><span class="s2">&quot;*assert False*&quot;</span><span class="p">,</span> <span class="s2">&quot;*1 failed*&quot;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>When choosing a file where to write a new test, take a look at the existing files and see if there’s
+one file which looks like a good fit. For example, a regression test about a bug in the <code class="docutils literal notranslate"><span class="pre">--lf</span></code> option
+should go into <code class="docutils literal notranslate"><span class="pre">test_cacheprovider.py</span></code>, given that this option is implemented in <code class="docutils literal notranslate"><span class="pre">cacheprovider.py</span></code>.
+If in doubt, go ahead and open a PR with your best guess and we can discuss this over the code.</p>
+</div>
+<div class="section" id="joining-the-development-team">
+<h2><a class="toc-backref" href="#id12">Joining the Development Team</a><a class="headerlink" href="#joining-the-development-team" title="Permalink to this headline">¶</a></h2>
+<p>Anyone who has successfully seen through a pull request which did not
+require any extra work from the development team to merge will
+themselves gain commit access if they so wish (if we forget to ask please send a friendly
+reminder).  This does not mean your workflow to contribute changes,
+everyone goes through the same pull-request-and-review process and
+no-one merges their own pull requests unless already approved.  It does however mean you can
+participate in the development process more fully since you can merge
+pull requests from other contributors yourself after having reviewed
+them.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="development_guide.html" title="Development Guide"
+             >next</a></li>
+        <li class="right" >
+          <a href="license.html" title="License"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

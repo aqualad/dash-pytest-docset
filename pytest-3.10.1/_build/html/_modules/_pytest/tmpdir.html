@@ -1,0 +1,255 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.tmpdir &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.tmpdir</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; support for providing temporary directories to test functions.  &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">import</span> <span class="nn">py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">.pathlib</span> <span class="kn">import</span> <span class="n">ensure_reset_dir</span>
+<span class="kn">from</span> <span class="nn">.pathlib</span> <span class="kn">import</span> <span class="n">LOCK_TIMEOUT</span>
+<span class="kn">from</span> <span class="nn">.pathlib</span> <span class="kn">import</span> <span class="n">make_numbered_dir</span>
+<span class="kn">from</span> <span class="nn">.pathlib</span> <span class="kn">import</span> <span class="n">make_numbered_dir_with_cleanup</span>
+<span class="kn">from</span> <span class="nn">.pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">_pytest.monkeypatch</span> <span class="kn">import</span> <span class="n">MonkeyPatch</span>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">TempPathFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Factory for temporary directories under the common base temp directory.</span>
+
+<span class="sd">    The base directory can be configured using the ``--basetemp`` option.&quot;&quot;&quot;</span>
+
+    <span class="n">_given_basetemp</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">_trace</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+    <span class="n">_basetemp</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span> <span class="nf">from_config</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param config: a pytest configuration</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span>
+            <span class="n">given_basetemp</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">basetemp</span><span class="p">,</span> <span class="n">trace</span><span class="o">=</span><span class="n">config</span><span class="o">.</span><span class="n">trace</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;tmpdir&quot;</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">mktemp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">,</span> <span class="n">numbered</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;makes a temporary directory managed by the factory&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">numbered</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getbasetemp</span><span class="p">()</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="n">basename</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">mkdir</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">make_numbered_dir</span><span class="p">(</span><span class="n">root</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">getbasetemp</span><span class="p">(),</span> <span class="n">prefix</span><span class="o">=</span><span class="n">basename</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trace</span><span class="p">(</span><span class="s2">&quot;mktemp&quot;</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">p</span>
+
+    <span class="k">def</span> <span class="nf">getbasetemp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return base temporary directory. &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basetemp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_given_basetemp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">basetemp</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_given_basetemp</span><span class="p">)</span>
+                <span class="n">ensure_reset_dir</span><span class="p">(</span><span class="n">basetemp</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">from_env</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;PYTEST_DEBUG_TEMPROOT&quot;</span><span class="p">)</span>
+                <span class="n">temproot</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">from_env</span> <span class="ow">or</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">gettempdir</span><span class="p">())</span>
+                <span class="n">user</span> <span class="o">=</span> <span class="n">get_user</span><span class="p">()</span> <span class="ow">or</span> <span class="s2">&quot;unknown&quot;</span>
+                <span class="c1"># use a sub-directory in the temproot to speed-up</span>
+                <span class="c1"># make_numbered_dir() call</span>
+                <span class="n">rootdir</span> <span class="o">=</span> <span class="n">temproot</span><span class="o">.</span><span class="n">joinpath</span><span class="p">(</span><span class="s2">&quot;pytest-of-</span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">user</span><span class="p">))</span>
+                <span class="n">rootdir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">basetemp</span> <span class="o">=</span> <span class="n">make_numbered_dir_with_cleanup</span><span class="p">(</span>
+                    <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;pytest-&quot;</span><span class="p">,</span> <span class="n">root</span><span class="o">=</span><span class="n">rootdir</span><span class="p">,</span> <span class="n">keep</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">lock_timeout</span><span class="o">=</span><span class="n">LOCK_TIMEOUT</span>
+                <span class="p">)</span>
+            <span class="k">assert</span> <span class="n">basetemp</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_basetemp</span> <span class="o">=</span> <span class="n">t</span> <span class="o">=</span> <span class="n">basetemp</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_trace</span><span class="p">(</span><span class="s2">&quot;new basetemp&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">t</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basetemp</span>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">TempdirFactory</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    backward comptibility wrapper that implements</span>
+<span class="sd">    :class:``py.path.local`` for :class:``TempPathFactory``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_tmppath_factory</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">ensuretemp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">string</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; (deprecated) return temporary directory path with</span>
+<span class="sd">            the given string as the trailing part.  It is usually</span>
+<span class="sd">            better to use the &#39;tmpdir&#39; function argument which</span>
+<span class="sd">            provides an empty unique-per-test-invocation directory</span>
+<span class="sd">            and is guaranteed to be empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># py.log._apiwarn(&quot;&gt;1.1&quot;, &quot;use tmpdir function argument&quot;)</span>
+        <span class="kn">from</span> <span class="nn">.deprecated</span> <span class="kn">import</span> <span class="n">PYTEST_ENSURETEMP</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">PYTEST_ENSURETEMP</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">getbasetemp</span><span class="p">()</span><span class="o">.</span><span class="n">ensure</span><span class="p">(</span><span class="n">string</span><span class="p">,</span> <span class="nb">dir</span><span class="o">=</span><span class="nb">dir</span><span class="p">)</span>
+
+<div class="viewcode-block" id="TempdirFactory.mktemp"><a class="viewcode-back" href="../../reference.html#_pytest.tmpdir.TempdirFactory.mktemp">[docs]</a>    <span class="k">def</span> <span class="nf">mktemp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">basename</span><span class="p">,</span> <span class="n">numbered</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Create a subdirectory of the base temporary directory and return it.</span>
+<span class="sd">        If ``numbered``, ensure the directory is unique by adding a number</span>
+<span class="sd">        prefix greater than any existing one.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tmppath_factory</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="n">basename</span><span class="p">,</span> <span class="n">numbered</span><span class="p">)</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span></div>
+
+<div class="viewcode-block" id="TempdirFactory.getbasetemp"><a class="viewcode-back" href="../../reference.html#_pytest.tmpdir.TempdirFactory.getbasetemp">[docs]</a>    <span class="k">def</span> <span class="nf">getbasetemp</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;backward compat wrapper for ``_tmppath_factory.getbasetemp``&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_tmppath_factory</span><span class="o">.</span><span class="n">getbasetemp</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">())</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_user</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Return the current user name, or None if getuser() does not work</span>
+<span class="sd">    in the current environment (see #1010).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">getpass</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">getpass</span><span class="o">.</span><span class="n">getuser</span><span class="p">()</span>
+    <span class="k">except</span> <span class="p">(</span><span class="ne">ImportError</span><span class="p">,</span> <span class="ne">KeyError</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Create a TempdirFactory and attach it to the config object.</span>
+
+<span class="sd">    This is to comply with existing plugins which expect the handler to be</span>
+<span class="sd">    available at pytest_configure time, but ideally should be moved entirely</span>
+<span class="sd">    to the tmpdir_factory session fixture.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mp</span> <span class="o">=</span> <span class="n">MonkeyPatch</span><span class="p">()</span>
+    <span class="n">tmppath_handler</span> <span class="o">=</span> <span class="n">TempPathFactory</span><span class="o">.</span><span class="n">from_config</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="n">TempdirFactory</span><span class="p">(</span><span class="n">tmppath_handler</span><span class="p">)</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">_cleanup</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">mp</span><span class="o">.</span><span class="n">undo</span><span class="p">)</span>
+    <span class="n">mp</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_tmp_path_factory&quot;</span><span class="p">,</span> <span class="n">tmppath_handler</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">mp</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_tmpdirhandler&quot;</span><span class="p">,</span> <span class="n">t</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">mp</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">pytest</span><span class="p">,</span> <span class="s2">&quot;ensuretemp&quot;</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">ensuretemp</span><span class="p">,</span> <span class="n">raising</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">tmpdir_factory</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a :class:`_pytest.tmpdir.TempdirFactory` instance for the test session.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">_tmpdirhandler</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">tmp_path_factory</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a :class:`_pytest.tmpdir.TempPathFactory` instance for the test session.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">_tmp_path_factory</span>
+
+
+<span class="k">def</span> <span class="nf">_mk_tmp</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">factory</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">name</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;[\W]&quot;</span><span class="p">,</span> <span class="s2">&quot;_&quot;</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+    <span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">30</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="p">[:</span><span class="n">MAXVAL</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">factory</span><span class="o">.</span><span class="n">mktemp</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">numbered</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="tmpdir"><a class="viewcode-back" href="../../reference.html#_pytest.tmpdir.tmpdir">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">tmpdir</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">tmpdir_factory</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a temporary directory path object</span>
+<span class="sd">    which is unique to each test function invocation,</span>
+<span class="sd">    created as a sub directory of the base temporary</span>
+<span class="sd">    directory.  The returned object is a `py.path.local`_</span>
+<span class="sd">    path object.</span>
+
+<span class="sd">    .. _`py.path.local`: https://py.readthedocs.io/en/latest/path.html</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">_mk_tmp</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">tmpdir_factory</span><span class="p">)</span></div>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">tmp_path</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">tmp_path_factory</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return a temporary directory path object</span>
+<span class="sd">    which is unique to each test function invocation,</span>
+<span class="sd">    created as a sub directory of the base temporary</span>
+<span class="sd">    directory.  The returned object is a :class:`pathlib.Path`</span>
+<span class="sd">    object.</span>
+
+<span class="sd">    .. note::</span>
+
+<span class="sd">        in python &lt; 3.6 this is a pathlib2.Path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">return</span> <span class="n">_mk_tmp</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">tmp_path_factory</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

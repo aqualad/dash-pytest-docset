@@ -1,0 +1,126 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>py.test 2.1.0: perfected assertions and bug fixes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="py.test 2.0.3: bug fixes and speed ups" href="release-2.0.3.html" />
+    <link rel="prev" title="py.test 2.1.1: assertion fixes and improved junitxml output" href="release-2.1.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.0.3.html" title="py.test 2.0.3: bug fixes and speed ups"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.1.1.html" title="py.test 2.1.1: assertion fixes and improved junitxml output"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="py-test-2-1-0-perfected-assertions-and-bug-fixes">
+<h1>py.test 2.1.0: perfected assertions and bug fixes<a class="headerlink" href="#py-test-2-1-0-perfected-assertions-and-bug-fixes" title="Permalink to this headline">¶</a></h1>
+<p>Welcome to the release of pytest-2.1, a mature testing tool for Python,
+supporting CPython 2.4-3.2, Jython and latest PyPy interpreters.  See
+the improved extensive docs (now also as PDF!) with tested examples here:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/">http://pytest.org/</a></div></blockquote>
+<p>The single biggest news about this release are <strong>perfected assertions</strong>
+courtesy of Benjamin Peterson.  You can now safely use <code class="docutils literal notranslate"><span class="pre">assert</span></code>
+statements in test modules without having to worry about side effects
+or python optimization (“-OO”) options.  This is achieved by rewriting
+assert statements in test modules upon import, using a PEP302 hook.
+See <a class="reference external" href="http://pytest.org/assert.html#advanced-assertion-introspection">http://pytest.org/assert.html#advanced-assertion-introspection</a> for
+detailed information.  The work has been partly sponsored by my company,
+merlinux GmbH.</p>
+<p>For further details on bug fixes and smaller enhancements see below.</p>
+<p>If you want to install or upgrade pytest, just type one of:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span> <span class="c1"># or</span>
+<span class="n">easy_install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>best,
+holger krekel / <a class="reference external" href="http://merlinux.eu">http://merlinux.eu</a></p>
+<div class="section" id="changes-between-2-0-3-and-2-1-0">
+<h2>Changes between 2.0.3 and 2.1.0<a class="headerlink" href="#changes-between-2-0-3-and-2-1-0" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>fix issue53 call nosestyle setup functions with correct ordering</li>
+<li>fix issue58 and issue59: new assertion code fixes</li>
+<li>merge Benjamin’s assertionrewrite branch: now assertions
+for test modules on python 2.6 and above are done by rewriting
+the AST and saving the pyc file before the test module is imported.
+see doc/assert.txt for more info.</li>
+<li>fix issue43: improve doctests with better traceback reporting on
+unexpected exceptions</li>
+<li>fix issue47: timing output in junitxml for test cases is now correct</li>
+<li>fix issue48: typo in MarkInfo repr leading to exception</li>
+<li>fix issue49: avoid confusing error when initialization partially fails</li>
+<li>fix issue44: env/username expansion for junitxml file path</li>
+<li>show releaselevel information in test runs for pypy</li>
+<li>reworked doc pages for better navigation and PDF generation</li>
+<li>report KeyboardInterrupt even if interrupted during session startup</li>
+<li>fix issue 35 - provide PDF doc version and download link from index page</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.0.3.html" title="py.test 2.0.3: bug fixes and speed ups"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.1.1.html" title="py.test 2.1.1: assertion fixes and improved junitxml output"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

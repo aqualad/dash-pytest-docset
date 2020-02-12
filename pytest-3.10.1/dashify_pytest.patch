@@ -1,0 +1,17 @@
+--- pytest-3.10.1/doc/en/conf.py	2018-11-11 08:43:04.000000000 -0500
++++ /Users/bryandodd/git/pytest/doc/en/conf.py	2020-02-11 20:18:54.000000000 -0500
+@@ -121,12 +121,12 @@
+
+ # The theme to use for HTML and HTML Help pages.  See the documentation for
+ # a list of builtin themes.
+-html_theme = "flask"
++html_theme = "basic"
+
+ # Theme options are theme-specific and customize the look and feel of a theme
+ # further.  For a list of options available for each theme, see the
+ # documentation.
+-html_theme_options = {"index_logo": None}
++html_theme_options = {"nosidebar": True}
+
+ # Add any paths that contain custom themes here, relative to this directory.
+ # html_theme_path = []

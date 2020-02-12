@@ -1,0 +1,299 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>unittest.TestCase Support &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Running tests written for nose" href="nose.html" />
+    <link rel="prev" title="Cache: working with cross-testrun state" href="cache.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="nose.html" title="Running tests written for nose"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="cache.html" title="Cache: working with cross-testrun state"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="unittest-testcase-support">
+<span id="unittest"></span><span id="unittest-testcase"></span><h1>unittest.TestCase Support<a class="headerlink" href="#unittest-testcase-support" title="Permalink to this headline">¶</a></h1>
+<p><code class="docutils literal notranslate"><span class="pre">pytest</span></code> supports running Python <code class="docutils literal notranslate"><span class="pre">unittest</span></code>-based tests out of the box.
+It’s meant for leveraging existing <code class="docutils literal notranslate"><span class="pre">unittest</span></code>-based test suites
+to use pytest as a test runner and also allow to incrementally adapt
+the test suite to take full advantage of pytest’s features.</p>
+<p>To run an existing <code class="docutils literal notranslate"><span class="pre">unittest</span></code>-style test suite using <code class="docutils literal notranslate"><span class="pre">pytest</span></code>, type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">tests</span>
+</pre></div>
+</div>
+<p>pytest will automatically collect <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses and
+their <code class="docutils literal notranslate"><span class="pre">test</span></code> methods in <code class="docutils literal notranslate"><span class="pre">test_*.py</span></code> or <code class="docutils literal notranslate"><span class="pre">*_test.py</span></code> files.</p>
+<p>Almost all <code class="docutils literal notranslate"><span class="pre">unittest</span></code> features are supported:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">&#64;unittest.skip</span></code> style decorators;</li>
+<li><code class="docutils literal notranslate"><span class="pre">setUp/tearDown</span></code>;</li>
+<li><code class="docutils literal notranslate"><span class="pre">setUpClass/tearDownClass</span></code>;</li>
+<li><code class="docutils literal notranslate"><span class="pre">setUpModule/tearDownModule</span></code>;</li>
+</ul>
+<p>Up to this point pytest does not have support for the following features:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://docs.python.org/3/library/unittest.html#load-tests-protocol">load_tests protocol</a>;</li>
+<li><a class="reference external" href="https://docs.python.org/3/library/unittest.html#distinguishing-test-iterations-using-subtests">subtests</a>;</li>
+</ul>
+<div class="section" id="benefits-out-of-the-box">
+<h2>Benefits out of the box<a class="headerlink" href="#benefits-out-of-the-box" title="Permalink to this headline">¶</a></h2>
+<p>By running your test suite with pytest you can make use of several features,
+in most cases without having to modify existing code:</p>
+<ul class="simple">
+<li>Obtain <a class="reference internal" href="example/reportingdemo.html#tbreportdemo"><span class="std std-ref">more informative tracebacks</span></a>;</li>
+<li><a class="reference internal" href="capture.html#captures"><span class="std std-ref">stdout and stderr</span></a> capturing;</li>
+<li><a class="reference internal" href="usage.html#select-tests"><span class="std std-ref">Test selection options</span></a> using <code class="docutils literal notranslate"><span class="pre">-k</span></code> and <code class="docutils literal notranslate"><span class="pre">-m</span></code> flags;</li>
+<li><a class="reference internal" href="usage.html#maxfail"><span class="std std-ref">Stopping after the first (or N) failures</span></a>;</li>
+<li><a class="reference internal" href="usage.html#pdb-option"><span class="std std-ref">–pdb</span></a> command-line option for debugging on test failures
+(see <a class="reference internal" href="#pdb-unittest-note"><span class="std std-ref">note</span></a> below);</li>
+<li>Distribute tests to multiple CPUs using the <a class="reference external" href="https://pypi.org/project/pytest-xdist/">pytest-xdist</a> plugin;</li>
+<li>Use <a class="reference internal" href="assert.html#assert"><span class="std std-ref">plain assert-statements</span></a> instead of <code class="docutils literal notranslate"><span class="pre">self.assert*</span></code> functions (<a class="reference external" href="https://pypi.org/project/unittest2pytest/">unittest2pytest</a> is immensely helpful in this);</li>
+</ul>
+</div>
+<div class="section" id="pytest-features-in-unittest-testcase-subclasses">
+<h2>pytest features in <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses<a class="headerlink" href="#pytest-features-in-unittest-testcase-subclasses" title="Permalink to this headline">¶</a></h2>
+<p>The following pytest features work in <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses:</p>
+<ul class="simple">
+<li><a class="reference internal" href="mark.html#mark"><span class="std std-ref">Marks</span></a>: <a class="reference internal" href="skipping.html#skip"><span class="std std-ref">skip</span></a>, <a class="reference internal" href="skipping.html#skipif"><span class="std std-ref">skipif</span></a>, <a class="reference internal" href="skipping.html#xfail"><span class="std std-ref">xfail</span></a>;</li>
+<li><a class="reference internal" href="#mixing-fixtures"><span class="std std-ref">Auto-use fixtures</span></a>;</li>
+</ul>
+<p>The following pytest features <strong>do not</strong> work, and probably
+never will due to different design philosophies:</p>
+<ul class="simple">
+<li><a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">Fixtures</span></a> (except for <code class="docutils literal notranslate"><span class="pre">autouse</span></code> fixtures, see <a class="reference internal" href="#mixing-fixtures"><span class="std std-ref">below</span></a>);</li>
+<li><a class="reference internal" href="parametrize.html#parametrize"><span class="std std-ref">Parametrization</span></a>;</li>
+<li><a class="reference internal" href="writing_plugins.html#writing-plugins"><span class="std std-ref">Custom hooks</span></a>;</li>
+</ul>
+<p>Third party plugins may or may not work well, depending on the plugin and the test suite.</p>
+</div>
+<div class="section" id="mixing-pytest-fixtures-into-unittest-testcase-subclasses-using-marks">
+<span id="mixing-fixtures"></span><h2>Mixing pytest fixtures into <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses using marks<a class="headerlink" href="#mixing-pytest-fixtures-into-unittest-testcase-subclasses-using-marks" title="Permalink to this headline">¶</a></h2>
+<p>Running your unittest with <code class="docutils literal notranslate"><span class="pre">pytest</span></code> allows you to use its
+<a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">fixture mechanism</span></a> with <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> style
+tests.  Assuming you have at least skimmed the pytest fixture features,
+let’s jump-start into an example that integrates a pytest <code class="docutils literal notranslate"><span class="pre">db_class</span></code>
+fixture, setting up a class-cached database object, and then reference
+it from a unittest-style test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="c1"># we define a fixture function below and it will be &quot;used&quot; by</span>
+<span class="c1"># referencing its name from tests</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;class&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">db_class</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">class</span> <span class="nc">DummyDB</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="c1"># set a class attribute on the invoking test context</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">cls</span><span class="o">.</span><span class="n">db</span> <span class="o">=</span> <span class="n">DummyDB</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This defines a fixture function <code class="docutils literal notranslate"><span class="pre">db_class</span></code> which - if used - is
+called once for each test class and which sets the class-level
+<code class="docutils literal notranslate"><span class="pre">db</span></code> attribute to a <code class="docutils literal notranslate"><span class="pre">DummyDB</span></code> instance.  The fixture function
+achieves this by receiving a special <code class="docutils literal notranslate"><span class="pre">request</span></code> object which gives
+access to <a class="reference internal" href="fixture.html#request-context"><span class="std std-ref">the requesting test context</span></a> such
+as the <code class="docutils literal notranslate"><span class="pre">cls</span></code> attribute, denoting the class from which the fixture
+is used.  This architecture de-couples fixture writing from actual test
+code and allows re-use of the fixture by a minimal reference, the fixture
+name.  So let’s write an actual <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> class using our
+fixture definition:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_unittest_db.py</span>
+
+<span class="kn">import</span> <span class="nn">unittest</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="s2">&quot;db_class&quot;</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">MyTest</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">test_method1</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;db&quot;</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span>   <span class="c1"># fail for demo purposes</span>
+
+    <span class="k">def</span> <span class="nf">test_method2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">db</span>   <span class="c1"># fail for demo purposes</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.usefixtures(&quot;db_class&quot;)</span></code> class-decorator makes sure that
+the pytest fixture function <code class="docutils literal notranslate"><span class="pre">db_class</span></code> is called once per class.
+Due to the deliberately failing assert statements, we can take a look at
+the <code class="docutils literal notranslate"><span class="pre">self.db</span></code> values in the traceback:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_unittest_db.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+
+test_unittest_db.py FF                                               [100%]
+
+================================= FAILURES =================================
+___________________________ MyTest.test_method1 ____________________________
+
+self = &lt;test_unittest_db.MyTest testMethod=test_method1&gt;
+
+    def test_method1(self):
+        assert hasattr(self, &quot;db&quot;)
+&gt;       assert 0, self.db   # fail for demo purposes
+E       AssertionError: &lt;conftest.db_class.&lt;locals&gt;.DummyDB object at 0xdeadbeef&gt;
+E       assert 0
+
+test_unittest_db.py:9: AssertionError
+___________________________ MyTest.test_method2 ____________________________
+
+self = &lt;test_unittest_db.MyTest testMethod=test_method2&gt;
+
+    def test_method2(self):
+&gt;       assert 0, self.db   # fail for demo purposes
+E       AssertionError: &lt;conftest.db_class.&lt;locals&gt;.DummyDB object at 0xdeadbeef&gt;
+E       assert 0
+
+test_unittest_db.py:12: AssertionError
+========================= 2 failed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>This default pytest traceback shows that the two test methods
+share the same <code class="docutils literal notranslate"><span class="pre">self.db</span></code> instance which was our intention
+when writing the class-scoped fixture function above.</p>
+</div>
+<div class="section" id="using-autouse-fixtures-and-accessing-other-fixtures">
+<h2>Using autouse fixtures and accessing other fixtures<a class="headerlink" href="#using-autouse-fixtures-and-accessing-other-fixtures" title="Permalink to this headline">¶</a></h2>
+<p>Although it’s usually better to explicitly declare use of fixtures you need
+for a given test, you may sometimes want to have fixtures that are
+automatically used in a given context.  After all, the traditional
+style of unittest-setup mandates the use of this implicit fixture writing
+and chances are, you are used to it or like it.</p>
+<p>You can flag fixture functions with <code class="docutils literal notranslate"><span class="pre">&#64;pytest.fixture(autouse=True)</span></code>
+and define the fixture function in the context where you want it used.
+Let’s look at an <code class="docutils literal notranslate"><span class="pre">initdir</span></code> fixture which makes all test methods of a
+<code class="docutils literal notranslate"><span class="pre">TestCase</span></code> class execute in a temporary directory with a
+pre-initialized <code class="docutils literal notranslate"><span class="pre">samplefile.ini</span></code>.  Our <code class="docutils literal notranslate"><span class="pre">initdir</span></code> fixture itself uses
+the pytest builtin <a class="reference internal" href="tmpdir.html#tmpdir"><span class="std std-ref">tmpdir</span></a> fixture to delegate the
+creation of a per-test temporary directory:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_unittest_cleandir.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">unittest</span>
+
+<span class="k">class</span> <span class="nc">MyTest</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">initdir</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tmpdir</span><span class="p">):</span>
+        <span class="n">tmpdir</span><span class="o">.</span><span class="n">chdir</span><span class="p">()</span> <span class="c1"># change to pytest-provided temporary directory</span>
+        <span class="n">tmpdir</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;samplefile.ini&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;# testdata&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">test_method</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;samplefile.ini&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">assert</span> <span class="s2">&quot;testdata&quot;</span> <span class="ow">in</span> <span class="n">s</span>
+</pre></div>
+</div>
+<p>Due to the <code class="docutils literal notranslate"><span class="pre">autouse</span></code> flag the <code class="docutils literal notranslate"><span class="pre">initdir</span></code> fixture function will be
+used for all methods of the class where it is defined.  This is a
+shortcut for using a <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.usefixtures(&quot;initdir&quot;)</span></code> marker
+on the class like in the previous example.</p>
+<p>Running this test module …:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q test_unittest_cleandir.py
+.                                                                    [100%]
+1 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>… gives us one passed test because the <code class="docutils literal notranslate"><span class="pre">initdir</span></code> fixture function
+was executed ahead of the <code class="docutils literal notranslate"><span class="pre">test_method</span></code>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p><code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> methods cannot directly receive fixture
+arguments as implementing that is likely to inflict
+on the ability to run general unittest.TestCase test suites.</p>
+<p>The above <code class="docutils literal notranslate"><span class="pre">usefixtures</span></code> and <code class="docutils literal notranslate"><span class="pre">autouse</span></code> examples should help to mix in
+pytest fixtures into unittest suites.</p>
+<p class="last">You can also gradually move away from subclassing from <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> to <em>plain asserts</em>
+and then start to benefit from the full pytest feature set step by step.</p>
+</div>
+<div class="admonition note" id="pdb-unittest-note">
+<p class="first admonition-title">Note</p>
+<p class="last">Running tests from <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses with <code class="docutils literal notranslate"><span class="pre">--pdb</span></code> will
+disable tearDown and cleanup methods for the case that an Exception
+occurs. This allows proper post mortem debugging for all applications
+which have significant logic in their tearDown machinery. However,
+supporting this feature has the following side effect: If people
+overwrite <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> <code class="docutils literal notranslate"><span class="pre">__call__</span></code> or <code class="docutils literal notranslate"><span class="pre">run</span></code>, they need to
+to overwrite <code class="docutils literal notranslate"><span class="pre">debug</span></code> in the same way  (this is also true for standard
+unittest).</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Due to architectural differences between the two frameworks, setup and
+teardown for <code class="docutils literal notranslate"><span class="pre">unittest</span></code>-based tests is performed during the <code class="docutils literal notranslate"><span class="pre">call</span></code> phase
+of testing instead of in <code class="docutils literal notranslate"><span class="pre">pytest</span></code>’s standard <code class="docutils literal notranslate"><span class="pre">setup</span></code> and <code class="docutils literal notranslate"><span class="pre">teardown</span></code>
+stages. This can be important to understand in some situations, particularly
+when reasoning about errors. For example, if a <code class="docutils literal notranslate"><span class="pre">unittest</span></code>-based suite
+exhibits errors during setup, <code class="docutils literal notranslate"><span class="pre">pytest</span></code> will report no errors during its
+<code class="docutils literal notranslate"><span class="pre">setup</span></code> phase and will instead raise the error during <code class="docutils literal notranslate"><span class="pre">call</span></code>.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="nose.html" title="Running tests written for nose"
+             >next</a></li>
+        <li class="right" >
+          <a href="cache.html" title="Cache: working with cross-testrun state"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

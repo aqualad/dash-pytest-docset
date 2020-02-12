@@ -1,0 +1,191 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.3: improved fixtures / better unittest integration &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.2.4: bug fixes, better junitxml/unittest/python3 compat" href="release-2.2.4.html" />
+    <link rel="prev" title="pytest-2.3.1: fix regression with factory functions" href="release-2.3.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.2.4.html" title="pytest-2.2.4: bug fixes, better junitxml/unittest/python3 compat"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.3.1.html" title="pytest-2.3.1: fix regression with factory functions"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-3-improved-fixtures-better-unittest-integration">
+<h1>pytest-2.3: improved fixtures / better unittest integration<a class="headerlink" href="#pytest-2-3-improved-fixtures-better-unittest-integration" title="Permalink to this headline">¶</a></h1>
+<p>pytest-2.3 comes with many major improvements for fixture/funcarg management
+and parametrized testing in Python.  It is now easier, more efficient and
+more predicatable to re-run the same tests with different fixture
+instances.  Also, you can directly declare the caching “scope” of
+fixtures so that dependent tests throughout your whole test suite can
+re-use database or other expensive fixture objects with ease.  Lastly,
+it’s possible for fixture functions (formerly known as funcarg
+factories) to use other fixtures, allowing for a completely modular and
+re-useable fixture design.</p>
+<p>For detailed info and tutorial-style examples, see:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/latest/fixture.html">http://pytest.org/latest/fixture.html</a></div></blockquote>
+<p>Moreover, there is now support for using pytest fixtures/funcargs with
+unittest-style suites, see here for examples:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/latest/unittest.html">http://pytest.org/latest/unittest.html</a></div></blockquote>
+<p>Besides, more unittest-test suites are now expected to “simply work”
+with pytest.</p>
+<p>All changes are backward compatible and you should be able to continue
+to run your test suites and 3rd party plugins that worked with
+pytest-2.2.4.</p>
+<p>If you are interested in the precise reasoning (including examples) of the
+pytest-2.3 fixture evolution, please consult
+<a class="reference external" href="http://pytest.org/latest/funcarg_compare.html">http://pytest.org/latest/funcarg_compare.html</a></p>
+<p>For general info on installation and getting started:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/latest/getting-started.html">http://pytest.org/latest/getting-started.html</a></div></blockquote>
+<p>Docs and PDF access as usual at:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>and more details for those already in the knowing of pytest can be found
+in the CHANGELOG below.</p>
+<p>Particular thanks for this release go to Floris Bruynooghe, Alex Okrushko
+Carl Meyer, Ronny Pfannschmidt, Benjamin Peterson and Alex Gaynor for helping
+to get the new features right and well integrated.  Ronny and Floris
+also helped to fix a number of bugs and yet more people helped by
+providing bug reports.</p>
+<p>have fun,
+holger krekel</p>
+<div class="section" id="changes-between-2-2-4-and-2-3-0">
+<h2>Changes between 2.2.4 and 2.3.0<a class="headerlink" href="#changes-between-2-2-4-and-2-3-0" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>fix issue202 - better automatic names for parametrized test functions</li>
+<li>fix issue139 - introduce &#64;pytest.fixture which allows direct scoping
+and parametrization of funcarg factories.  Introduce new &#64;pytest.setup
+marker to allow the writing of setup functions which accept funcargs.</li>
+<li>fix issue198 - conftest fixtures were not found on windows32 in some
+circumstances with nested directory structures due to path manipulation issues</li>
+<li>fix issue193 skip test functions with were parametrized with empty
+parameter sets</li>
+<li>fix python3.3 compat, mostly reporting bits that previously depended
+on dict ordering</li>
+<li>introduce re-ordering of tests by resource and parametrization setup
+which takes precedence to the usual file-ordering</li>
+<li>fix issue185 monkeypatching time.time does not cause pytest to fail</li>
+<li>fix issue172 duplicate call of pytest.setup-decoratored setup_module
+functions</li>
+<li>fix junitxml=path construction so that if tests change the
+current working directory and the path is a relative path
+it is constructed correctly from the original current working dir.</li>
+<li>fix “python setup.py test” example to cause a proper “errno” return</li>
+<li>fix issue165 - fix broken doc links and mention stackoverflow for FAQ</li>
+<li>catch unicode-issues when writing failure representations
+to terminal to prevent the whole session from crashing</li>
+<li>fix xfail/skip confusion: a skip-mark or an imperative pytest.skip
+will now take precedence before xfail-markers because we
+can’t determine xfail/xpass status in case of a skip. see also:
+<a class="reference external" href="http://stackoverflow.com/questions/11105828/in-py-test-when-i-explicitly-skip-a-test-that-is-marked-as-xfail-how-can-i-get">http://stackoverflow.com/questions/11105828/in-py-test-when-i-explicitly-skip-a-test-that-is-marked-as-xfail-how-can-i-get</a></li>
+<li>always report installed 3rd party plugins in the header of a test run</li>
+<li>fix issue160: a failing setup of an xfail-marked tests should
+be reported as xfail (not xpass)</li>
+<li>fix issue128: show captured output when capsys/capfd are used</li>
+<li>fix issue179: properly show the dependency chain of factories</li>
+<li>pluginmanager.register(…) now raises ValueError if the
+plugin has been already registered or the name is taken</li>
+<li>fix issue159: improve <a class="reference external" href="http://pytest.org/latest/faq.html">http://pytest.org/latest/faq.html</a>
+especially with respect to the “magic” history, also mention
+pytest-django, trial and unittest integration.</li>
+<li>make request.keywords and node.keywords writable.  All descendant
+collection nodes will see keyword values.  Keywords are dictionaries
+containing markers and other info.</li>
+<li>fix issue 178: xml binary escapes are now wrapped in py.xml.raw</li>
+<li>fix issue 176: correctly catch the builtin AssertionError
+even when we replaced AssertionError with a subclass on the
+python level</li>
+<li>factory discovery no longer fails with magic global callables
+that provide no sane __code__ object (mock.call for example)</li>
+<li>fix issue 182: testdir.inprocess_run now considers passed plugins</li>
+<li><dl class="first docutils">
+<dt>fix issue 188: ensure sys.exc_info is clear on python2</dt>
+<dd>before calling into a test</dd>
+</dl>
+</li>
+<li>fix issue 191: add unittest TestCase runTest method support</li>
+<li>fix issue 156: monkeypatch correctly handles class level descriptors</li>
+<li>reporting refinements:<ul>
+<li>pytest_report_header now receives a “startdir” so that
+you can use startdir.bestrelpath(yourpath) to show
+nice relative path</li>
+<li>allow plugins to implement both pytest_report_header and
+pytest_sessionstart (sessionstart is invoked first).</li>
+<li>don’t show deselected reason line if there is none</li>
+<li>py.test -vv will show all of assert comparisons instead of truncating</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.2.4.html" title="pytest-2.2.4: bug fixes, better junitxml/unittest/python3 compat"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.3.1.html" title="pytest-2.3.1: fix regression with factory functions"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

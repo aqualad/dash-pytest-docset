@@ -1,0 +1,175 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Development Guide &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Talks and Tutorials" href="talks.html" />
+    <link rel="prev" title="Contribution getting started" href="contributing.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="talks.html" title="Talks and Tutorials"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="contributing.html" title="Contribution getting started"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="development-guide">
+<h1>Development Guide<a class="headerlink" href="#development-guide" title="Permalink to this headline">¶</a></h1>
+<p>Some general guidelines regarding development in pytest for maintainers and contributors. Nothing here
+is set in stone and can’t be changed, feel free to suggest improvements or changes in the workflow.</p>
+<div class="section" id="code-style">
+<h2>Code Style<a class="headerlink" href="#code-style" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://www.python.org/dev/peps/pep-0008">PEP-8</a></li>
+<li><a class="reference external" href="https://pypi.org/project/flake8/">flake8</a> for quality checks</li>
+<li><a class="reference external" href="http://www.pyinvoke.org/">invoke</a> to automate development tasks</li>
+</ul>
+</div>
+<div class="section" id="branches">
+<h2>Branches<a class="headerlink" href="#branches" title="Permalink to this headline">¶</a></h2>
+<p>We have two long term branches:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">master</span></code>: contains the code for the next bugfix release.</li>
+<li><code class="docutils literal notranslate"><span class="pre">features</span></code>: contains the code with new features for the next minor release.</li>
+</ul>
+<p>The official repository usually does not contain topic branches, developers and contributors should create topic
+branches in their own forks.</p>
+<p>Exceptions can be made for cases where more than one contributor is working on the same
+topic or where it makes sense to use some automatic capability of the main repository, such as automatic docs from
+<a class="reference external" href="readthedocs.org">readthedocs</a> for a branch dealing with documentation refactoring.</p>
+</div>
+<div class="section" id="issues">
+<h2>Issues<a class="headerlink" href="#issues" title="Permalink to this headline">¶</a></h2>
+<p>Any question, feature, bug or proposal is welcome as an issue. Users are encouraged to use them whenever they need.</p>
+<p>GitHub issues should use labels to categorize them. Labels should be created sporadically, to fill a niche; we should
+avoid creating labels just for the sake of creating them.</p>
+<p>Each label should include a description in the GitHub’s interface stating its purpose.</p>
+<p>Labels are managed using <a class="reference external" href="https://github.com/hackebrot/labels">labels</a>. All the labels in the repository
+are kept in <code class="docutils literal notranslate"><span class="pre">.github/labels.toml</span></code>, so any changes should be via PRs to that file.
+After a PR is accepted and merged, one of the maintainers must manually synchronize the labels file with the
+GitHub repository.</p>
+<div class="section" id="temporary-labels">
+<h3>Temporary labels<a class="headerlink" href="#temporary-labels" title="Permalink to this headline">¶</a></h3>
+<p>To classify issues for a special event it is encouraged to create a temporary label. This helps those involved to find
+the relevant issues to work on. Examples of that are sprints in Python events or global hacking events.</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">temporary:</span> <span class="pre">EP2017</span> <span class="pre">sprint</span></code>: candidate issues or PRs tackled during the EuroPython 2017</li>
+</ul>
+<p>Issues created at those events should have other relevant labels added as well.</p>
+<p>Those labels should be removed after they are no longer relevant.</p>
+</div>
+</div>
+<div class="section" id="release-procedure">
+<h2>Release Procedure<a class="headerlink" href="#release-procedure" title="Permalink to this headline">¶</a></h2>
+<p>Our current policy for releasing is to aim for a bugfix every few weeks and a minor release every 2-3 months. The idea
+is to get fixes and new features out instead of trying to cram a ton of features into a release and by consequence
+taking a lot of time to make a new one.</p>
+<div class="admonition important">
+<p class="first admonition-title">Important</p>
+<p class="last">pytest releases must be prepared on <strong>Linux</strong> because the docs and examples expect
+to be executed in that platform.</p>
+</div>
+<ol class="arabic">
+<li><p class="first">Create a branch <code class="docutils literal notranslate"><span class="pre">release-X.Y.Z</span></code> with the version for the release.</p>
+<ul class="simple">
+<li><strong>patch releases</strong>: from the latest <code class="docutils literal notranslate"><span class="pre">master</span></code>;</li>
+<li><strong>minor releases</strong>: from the latest <code class="docutils literal notranslate"><span class="pre">features</span></code>; then merge with the latest <code class="docutils literal notranslate"><span class="pre">master</span></code>;</li>
+</ul>
+<p>Ensure your are in a clean work tree.</p>
+</li>
+<li><p class="first">Using <code class="docutils literal notranslate"><span class="pre">tox</span></code>, generate docs, changelog, announcements:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ tox -e release -- &lt;VERSION&gt;
+</pre></div>
+</div>
+<p>This will generate a commit with all the changes ready for pushing.</p>
+</li>
+<li><p class="first">Open a PR for this branch targeting <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p>
+</li>
+<li><p class="first">After all tests pass and the PR has been approved, publish to PyPI by pushing the tag:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">tag</span> <span class="o">&lt;</span><span class="n">VERSION</span><span class="o">&gt;</span>
+<span class="n">git</span> <span class="n">push</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">pytest</span><span class="o">-</span><span class="n">dev</span><span class="o">/</span><span class="n">pytest</span><span class="o">.</span><span class="n">git</span> <span class="o">&lt;</span><span class="n">VERSION</span><span class="o">&gt;</span>
+</pre></div>
+</div>
+<p>Wait for the deploy to complete, then make sure it is <a class="reference external" href="https://pypi.org/project/pytest">available on PyPI</a>.</p>
+</li>
+<li><p class="first">Merge the PR into <code class="docutils literal notranslate"><span class="pre">master</span></code>.</p>
+</li>
+<li><p class="first">Send an email announcement with the contents from:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">doc</span><span class="o">/</span><span class="n">en</span><span class="o">/</span><span class="n">announce</span><span class="o">/</span><span class="n">release</span><span class="o">-&lt;</span><span class="n">VERSION</span><span class="o">&gt;.</span><span class="n">rst</span>
+</pre></div>
+</div>
+<p>To the following mailing lists:</p>
+<ul class="simple">
+<li><a class="reference external" href="mailto:pytest-dev&#37;&#52;&#48;python&#46;org">pytest-dev<span>&#64;</span>python<span>&#46;</span>org</a> (all releases)</li>
+<li><a class="reference external" href="mailto:python-announce-list&#37;&#52;&#48;python&#46;org">python-announce-list<span>&#64;</span>python<span>&#46;</span>org</a> (all releases)</li>
+<li><a class="reference external" href="mailto:testing-in-python&#37;&#52;&#48;lists&#46;idyll&#46;org">testing-in-python<span>&#64;</span>lists<span>&#46;</span>idyll<span>&#46;</span>org</a> (only major/minor releases)</li>
+</ul>
+<p>And announce it on <a class="reference external" href="https://twitter.com/">Twitter</a> with the <code class="docutils literal notranslate"><span class="pre">#pytest</span></code> hashtag.</p>
+</li>
+</ol>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="talks.html" title="Talks and Tutorials"
+             >next</a></li>
+        <li class="right" >
+          <a href="contributing.html" title="Contribution getting started"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

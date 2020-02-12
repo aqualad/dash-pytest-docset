@@ -1,0 +1,248 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.3: reasoning for fixture/funcarg evolution &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-3-reasoning-for-fixture-funcarg-evolution">
+<span id="funcargcompare"></span><h1>pytest-2.3: reasoning for fixture/funcarg evolution<a class="headerlink" href="#pytest-2-3-reasoning-for-fixture-funcarg-evolution" title="Permalink to this headline">¶</a></h1>
+<p><strong>Target audience</strong>: Reading this document requires basic knowledge of
+python testing, xUnit setup methods and the (previous) basic pytest
+funcarg mechanism, see <a class="reference external" href="https://docs.pytest.org/en/latest/historical-notes.html#funcargs-and-pytest-funcarg">https://docs.pytest.org/en/latest/historical-notes.html#funcargs-and-pytest-funcarg</a>.
+If you are new to pytest, then you can simply ignore this
+section and read the other sections.</p>
+<div class="section" id="shortcomings-of-the-previous-pytest-funcarg-mechanism">
+<h2>Shortcomings of the previous <code class="docutils literal notranslate"><span class="pre">pytest_funcarg__</span></code> mechanism<a class="headerlink" href="#shortcomings-of-the-previous-pytest-funcarg-mechanism" title="Permalink to this headline">¶</a></h2>
+<p>The pre pytest-2.3 funcarg mechanism calls a factory each time a
+funcarg for a test function is required.  If a factory wants to
+re-use a resource across different scopes, it often used
+the <code class="docutils literal notranslate"><span class="pre">request.cached_setup()</span></code> helper to manage caching of
+resources.  Here is a basic example how we could implement
+a per-session Database object:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="k">class</span> <span class="nc">Database</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;database instance created&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">destroy</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;database instance destroyed&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">pytest_funcarg__db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">cached_setup</span><span class="p">(</span><span class="n">setup</span><span class="o">=</span><span class="n">DataBase</span><span class="p">,</span>
+                                <span class="n">teardown</span><span class="o">=</span><span class="k">lambda</span> <span class="n">db</span><span class="p">:</span> <span class="n">db</span><span class="o">.</span><span class="n">destroy</span><span class="p">,</span>
+                                <span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>There are several limitations and difficulties with this approach:</p>
+<ol class="arabic simple">
+<li>Scoping funcarg resource creation is not straight forward, instead one must
+understand the intricate cached_setup() method mechanics.</li>
+<li>parametrizing the “db” resource is not straight forward:
+you need to apply a “parametrize” decorator or implement a
+<a class="reference internal" href="reference.html#_pytest.hookspec.pytest_generate_tests" title="_pytest.hookspec.pytest_generate_tests"><code class="xref py py-func docutils literal notranslate"><span class="pre">pytest_generate_tests()</span></code></a> hook
+calling <a class="reference internal" href="reference.html#_pytest.python.Metafunc.parametrize" title="_pytest.python.Metafunc.parametrize"><code class="xref py py-func docutils literal notranslate"><span class="pre">parametrize()</span></code></a> which
+performs parametrization at the places where the resource
+is used.  Moreover, you need to modify the factory to use an
+<code class="docutils literal notranslate"><span class="pre">extrakey</span></code> parameter containing <code class="docutils literal notranslate"><span class="pre">request.param</span></code> to the
+<code class="xref py py-func docutils literal notranslate"><span class="pre">cached_setup()</span></code> call.</li>
+<li>Multiple parametrized session-scoped resources will be active
+at the same time, making it hard for them to affect global state
+of the application under test.</li>
+<li>there is no way how you can make use of funcarg factories
+in xUnit setup methods.</li>
+<li>A non-parametrized fixture function cannot use a parametrized
+funcarg resource if it isn’t stated in the test function signature.</li>
+</ol>
+<p>All of these limitations are addressed with pytest-2.3 and its
+improved <a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">fixture mechanism</span></a>.</p>
+</div>
+<div class="section" id="direct-scoping-of-fixture-funcarg-factories">
+<h2>Direct scoping of fixture/funcarg factories<a class="headerlink" href="#direct-scoping-of-fixture-funcarg-factories" title="Permalink to this headline">¶</a></h2>
+<p>Instead of calling cached_setup() with a cache scope, you can use the
+<a class="reference internal" href="fixture.html#id1"><span class="std std-ref">&#64;pytest.fixture</span></a> decorator and directly state
+the scope:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="c1"># factory will only be invoked once per session -</span>
+    <span class="n">db</span> <span class="o">=</span> <span class="n">DataBase</span><span class="p">()</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">addfinalizer</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">destroy</span><span class="p">)</span>  <span class="c1"># destroy when session is finished</span>
+    <span class="k">return</span> <span class="n">db</span>
+</pre></div>
+</div>
+<p>This factory implementation does not need to call <code class="docutils literal notranslate"><span class="pre">cached_setup()</span></code> anymore
+because it will only be invoked once per session.  Moreover, the
+<code class="docutils literal notranslate"><span class="pre">request.addfinalizer()</span></code> registers a finalizer according to the specified
+resource scope on which the factory function is operating.</p>
+</div>
+<div class="section" id="direct-parametrization-of-funcarg-resource-factories">
+<h2>Direct parametrization of funcarg resource factories<a class="headerlink" href="#direct-parametrization-of-funcarg-resource-factories" title="Permalink to this headline">¶</a></h2>
+<p>Previously, funcarg factories could not directly cause parametrization.
+You needed to specify a <code class="docutils literal notranslate"><span class="pre">&#64;parametrize</span></code> decorator on your test function
+or implement a <code class="docutils literal notranslate"><span class="pre">pytest_generate_tests</span></code> hook to perform
+parametrization, i.e. calling a test multiple times with different value
+sets.  pytest-2.3 introduces a decorator for use on the factory itself:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mysql&quot;</span><span class="p">,</span> <span class="s2">&quot;pg&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="o">...</span> <span class="c1"># use request.param</span>
+</pre></div>
+</div>
+<p>Here the factory will be invoked twice (with the respective “mysql”
+and “pg” values set as <code class="docutils literal notranslate"><span class="pre">request.param</span></code> attributes) and all of
+the tests requiring “db” will run twice as well.  The “mysql” and
+“pg” values will also be used for reporting the test-invocation variants.</p>
+<p>This new way of parametrizing funcarg factories should in many cases
+allow to re-use already written factories because effectively
+<code class="docutils literal notranslate"><span class="pre">request.param</span></code> was already used when test functions/classes were
+parametrized via
+<code class="xref py py-func docutils literal notranslate"><span class="pre">parametrize(indirect=True)()</span></code> calls.</p>
+<p>Of course it’s perfectly fine to combine parametrization and scoping:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">,</span> <span class="n">params</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;mysql&quot;</span><span class="p">,</span> <span class="s2">&quot;pg&quot;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">==</span> <span class="s2">&quot;mysql&quot;</span><span class="p">:</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">MySQL</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">param</span> <span class="o">==</span> <span class="s2">&quot;pg&quot;</span><span class="p">:</span>
+        <span class="n">db</span> <span class="o">=</span> <span class="n">PG</span><span class="p">()</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">addfinalizer</span><span class="p">(</span><span class="n">db</span><span class="o">.</span><span class="n">destroy</span><span class="p">)</span>  <span class="c1"># destroy when session is finished</span>
+    <span class="k">return</span> <span class="n">db</span>
+</pre></div>
+</div>
+<p>This would execute all tests requiring the per-session “db” resource twice,
+receiving the values created by the two respective invocations to the
+factory function.</p>
+</div>
+<div class="section" id="no-pytest-funcarg-prefix-when-using-fixture-decorator">
+<h2>No <code class="docutils literal notranslate"><span class="pre">pytest_funcarg__</span></code> prefix when using &#64;fixture decorator<a class="headerlink" href="#no-pytest-funcarg-prefix-when-using-fixture-decorator" title="Permalink to this headline">¶</a></h2>
+<p>When using the <code class="docutils literal notranslate"><span class="pre">&#64;fixture</span></code> decorator the name of the function
+denotes the name under which the resource can be accessed as a function
+argument:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>The name under which the funcarg resource can be requested is <code class="docutils literal notranslate"><span class="pre">db</span></code>.</p>
+<p>You can still use the “old” non-decorator way of specifying funcarg factories
+aka:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">pytest_funcarg__db</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>But it is then not possible to define scoping and parametrization.
+It is thus recommended to use the factory decorator.</p>
+</div>
+<div class="section" id="solving-per-session-setup-autouse-fixtures">
+<h2>solving per-session setup / autouse fixtures<a class="headerlink" href="#solving-per-session-setup-autouse-fixtures" title="Permalink to this headline">¶</a></h2>
+<p>pytest for a long time offered a pytest_configure and a pytest_sessionstart
+hook which are often used to setup global resources.  This suffers from
+several problems:</p>
+<ol class="arabic simple">
+<li>in distributed testing the master process would setup test resources
+that are never needed because it only co-ordinates the test run
+activities of the slave processes.</li>
+<li>if you only perform a collection (with “–collect-only”)
+resource-setup will still be executed.</li>
+<li>If a pytest_sessionstart is contained in some subdirectories
+conftest.py file, it will not be called.  This stems from the
+fact that this hook is actually used for reporting, in particular
+the test-header with platform/custom information.</li>
+</ol>
+<p>Moreover, it was not easy to define a scoped setup from plugins or
+conftest files other than to implement a <code class="docutils literal notranslate"><span class="pre">pytest_runtest_setup()</span></code> hook
+and caring for scoping/caching yourself.  And it’s virtually impossible
+to do this with parametrization as <code class="docutils literal notranslate"><span class="pre">pytest_runtest_setup()</span></code> is called
+during test execution and parametrization happens at collection time.</p>
+<p>It follows that pytest_configure/session/runtest_setup are often not
+appropriate for implementing common fixture needs.  Therefore,
+pytest-2.3 introduces <a class="reference internal" href="fixture.html#autouse-fixtures"><span class="std std-ref">Autouse fixtures (xUnit setup on steroids)</span></a> which fully
+integrate with the generic <a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">fixture mechanism</span></a>
+and obsolete many prior uses of pytest hooks.</p>
+</div>
+<div class="section" id="funcargs-fixture-discovery-now-happens-at-collection-time">
+<h2>funcargs/fixture discovery now happens at collection time<a class="headerlink" href="#funcargs-fixture-discovery-now-happens-at-collection-time" title="Permalink to this headline">¶</a></h2>
+<p>Since pytest-2.3, discovery of fixture/funcarg factories are taken care of
+at collection time.  This is more efficient especially for large test suites.
+Moreover, a call to “pytest –collect-only” should be able to in the future
+show a lot of setup-information and thus presents a nice method to get an
+overview of fixture management in your project.</p>
+</div>
+<div class="section" id="conclusion-and-compatibility-notes">
+<span id="funcargscompat"></span><span id="compatibility-notes"></span><h2>Conclusion and compatibility notes<a class="headerlink" href="#conclusion-and-compatibility-notes" title="Permalink to this headline">¶</a></h2>
+<p><strong>funcargs</strong> were originally introduced to pytest-2.0.  In pytest-2.3
+the mechanism was extended and refined and is now described as
+fixtures:</p>
+<ul class="simple">
+<li>previously funcarg factories were specified with a special
+<code class="docutils literal notranslate"><span class="pre">pytest_funcarg__NAME</span></code> prefix instead of using the
+<code class="docutils literal notranslate"><span class="pre">&#64;pytest.fixture</span></code> decorator.</li>
+<li>Factories received a <code class="docutils literal notranslate"><span class="pre">request</span></code> object which managed caching through
+<code class="docutils literal notranslate"><span class="pre">request.cached_setup()</span></code> calls and allowed using other funcargs via
+<code class="docutils literal notranslate"><span class="pre">request.getfuncargvalue()</span></code> calls.  These intricate APIs made it hard
+to do proper parametrization and implement resource caching. The
+new <a class="reference internal" href="reference.html#pytest.fixture" title="pytest.fixture"><code class="xref py py-func docutils literal notranslate"><span class="pre">pytest.fixture()</span></code></a> decorator allows to declare the scope
+and let pytest figure things out for you.</li>
+<li>if you used parametrization and funcarg factories which made use of
+<code class="docutils literal notranslate"><span class="pre">request.cached_setup()</span></code> it is recommended to invest a few minutes
+and simplify your fixture function code to use the <a class="reference internal" href="fixture.html#pytest-fixture"><span class="std std-ref">Fixtures as Function arguments</span></a>
+decorator instead.  This will also allow to take advantage of
+the automatic per-resource grouping of tests.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

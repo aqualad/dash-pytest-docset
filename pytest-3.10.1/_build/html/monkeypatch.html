@@ -1,0 +1,153 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Monkeypatching/mocking modules and environments &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Temporary directories and files" href="tmpdir.html" />
+    <link rel="prev" title="Marking test functions with attributes" href="mark.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="tmpdir.html" title="Temporary directories and files"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="mark.html" title="Marking test functions with attributes"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="monkeypatching-mocking-modules-and-environments">
+<h1>Monkeypatching/mocking modules and environments<a class="headerlink" href="#monkeypatching-mocking-modules-and-environments" title="Permalink to this headline">¶</a></h1>
+<p>Sometimes tests need to invoke functionality which depends
+on global settings or which invokes code which cannot be easily
+tested such as network access.  The <code class="docutils literal notranslate"><span class="pre">monkeypatch</span></code> fixture
+helps you to safely set/delete an attribute, dictionary item or
+environment variable or to modify <code class="docutils literal notranslate"><span class="pre">sys.path</span></code> for importing.
+See the <a class="reference external" href="http://tetamap.wordpress.com/2009/03/03/monkeypatching-in-unit-tests-done-right/">monkeypatch blog post</a> for some introduction material
+and a discussion of its motivation.</p>
+<div class="section" id="simple-example-monkeypatching-functions">
+<h2>Simple example: monkeypatching functions<a class="headerlink" href="#simple-example-monkeypatching-functions" title="Permalink to this headline">¶</a></h2>
+<p>If you want to pretend that <code class="docutils literal notranslate"><span class="pre">os.expanduser</span></code> returns a certain
+directory, you can use the <code class="xref py py-meth docutils literal notranslate"><span class="pre">monkeypatch.setattr()</span></code> method to
+patch this function before calling into a function which uses it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+<span class="k">def</span> <span class="nf">getssh</span><span class="p">():</span> <span class="c1"># pseudo application code</span>
+    <span class="k">return</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">expanduser</span><span class="p">(</span><span class="s2">&quot;~admin&quot;</span><span class="p">),</span> <span class="s1">&#39;.ssh&#39;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">test_mytest</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">mockreturn</span><span class="p">(</span><span class="n">path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s1">&#39;/abc&#39;</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="s1">&#39;expanduser&#39;</span><span class="p">,</span> <span class="n">mockreturn</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">getssh</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="n">x</span> <span class="o">==</span> <span class="s1">&#39;/abc/.ssh&#39;</span>
+</pre></div>
+</div>
+<p>Here our test function monkeypatches <code class="docutils literal notranslate"><span class="pre">os.path.expanduser</span></code> and
+then calls into a function that calls it.  After the test function
+finishes the <code class="docutils literal notranslate"><span class="pre">os.path.expanduser</span></code> modification will be undone.</p>
+</div>
+<div class="section" id="example-preventing-requests-from-remote-operations">
+<h2>example: preventing “requests” from remote operations<a class="headerlink" href="#example-preventing-requests-from-remote-operations" title="Permalink to this headline">¶</a></h2>
+<p>If you want to prevent the “requests” library from performing http
+requests in all your tests, you can do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">autouse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">no_requests</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
+    <span class="n">monkeypatch</span><span class="o">.</span><span class="n">delattr</span><span class="p">(</span><span class="s2">&quot;requests.sessions.Session.request&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This autouse fixture will be executed for each test function and it
+will delete the method <code class="docutils literal notranslate"><span class="pre">request.session.Session.request</span></code>
+so that any attempts within tests to create http requests will fail.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Be advised that it is not recommended to patch builtin functions such as <code class="docutils literal notranslate"><span class="pre">open</span></code>,
+<code class="docutils literal notranslate"><span class="pre">compile</span></code>, etc., because it might break pytest’s internals. If that’s
+unavoidable, passing <code class="docutils literal notranslate"><span class="pre">--tb=native</span></code>, <code class="docutils literal notranslate"><span class="pre">--assert=plain</span></code> and <code class="docutils literal notranslate"><span class="pre">--capture=no</span></code> might
+help although there’s no guarantee.</p>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>Mind that patching <code class="docutils literal notranslate"><span class="pre">stdlib</span></code> functions and some third-party libraries used by pytest
+might break pytest itself, therefore in those cases it is recommended to use
+<a class="reference internal" href="reference.html#_pytest.monkeypatch.MonkeyPatch.context" title="_pytest.monkeypatch.MonkeyPatch.context"><code class="xref py py-meth docutils literal notranslate"><span class="pre">MonkeyPatch.context()</span></code></a> to limit the patching to the block you want tested:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">functools</span>
+
+
+<span class="k">def</span> <span class="nf">test_partial</span><span class="p">(</span><span class="n">monkeypatch</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">monkeypatch</span><span class="o">.</span><span class="n">context</span><span class="p">()</span> <span class="k">as</span> <span class="n">m</span><span class="p">:</span>
+        <span class="n">m</span><span class="o">.</span><span class="n">setattr</span><span class="p">(</span><span class="n">functools</span><span class="p">,</span> <span class="s2">&quot;partial&quot;</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="n">functools</span><span class="o">.</span><span class="n">partial</span> <span class="o">==</span> <span class="mi">3</span>
+</pre></div>
+</div>
+<p class="last">See issue <a class="reference external" href="https://github.com/pytest-dev/pytest/issues/3290">#3290</a> for details.</p>
+</div>
+</div>
+<div class="section" id="api-reference">
+<h2>API Reference<a class="headerlink" href="#api-reference" title="Permalink to this headline">¶</a></h2>
+<p>Consult the docs for the <a class="reference internal" href="reference.html#_pytest.monkeypatch.MonkeyPatch" title="_pytest.monkeypatch.MonkeyPatch"><code class="xref py py-class docutils literal notranslate"><span class="pre">MonkeyPatch</span></code></a> class.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="tmpdir.html" title="Temporary directories and files"
+             >next</a></li>
+        <li class="right" >
+          <a href="mark.html" title="Marking test functions with attributes"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

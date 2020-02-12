@@ -1,0 +1,789 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.python_api &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.python_api</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">import</span> <span class="nn">pprint</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">decimal</span> <span class="kn">import</span> <span class="n">Decimal</span>
+<span class="kn">from</span> <span class="nn">numbers</span> <span class="kn">import</span> <span class="n">Number</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">from</span> <span class="nn">more_itertools.more</span> <span class="kn">import</span> <span class="n">always_iterable</span>
+<span class="kn">from</span> <span class="nn">six.moves</span> <span class="kn">import</span> <span class="n">filterfalse</span>
+<span class="kn">from</span> <span class="nn">six.moves</span> <span class="kn">import</span> <span class="nb">zip</span>
+
+<span class="kn">import</span> <span class="nn">_pytest._code</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">isclass</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">Mapping</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">Sequence</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">STRING_TYPES</span>
+<span class="kn">from</span> <span class="nn">_pytest.outcomes</span> <span class="kn">import</span> <span class="n">fail</span>
+
+<span class="n">BASE_TYPE</span> <span class="o">=</span> <span class="p">(</span><span class="nb">type</span><span class="p">,</span> <span class="n">STRING_TYPES</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_cmp_raises_type_error</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;__cmp__ implementation which raises TypeError. Used</span>
+<span class="sd">    by Approx base classes to implement only == and != and raise a</span>
+<span class="sd">    TypeError for other comparisons.</span>
+
+<span class="sd">    Needed in Python 2 only, Python 3 all it takes is not implementing the</span>
+<span class="sd">    other operators at all.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+        <span class="s2">&quot;Comparison operators other than == and != not supported by approx objects&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_non_numeric_type_error</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">at</span><span class="p">):</span>
+    <span class="n">at_str</span> <span class="o">=</span> <span class="s2">&quot; at </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">at</span><span class="p">)</span> <span class="k">if</span> <span class="n">at</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+    <span class="k">return</span> <span class="ne">TypeError</span><span class="p">(</span>
+        <span class="s2">&quot;cannot make approximate comparisons to non-numeric values: </span><span class="si">{!r}</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">value</span><span class="p">,</span> <span class="n">at_str</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+
+
+<span class="c1"># builtin pytest.approx helper</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxBase</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Provide shared utilities for making approximate comparisons between numbers</span>
+<span class="sd">    or sequences of numbers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Tell numpy to use our `__eq__` operator instead of its.</span>
+    <span class="n">__array_ufunc__</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">__array_priority__</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expected</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">abs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nan_ok</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected</span> <span class="o">=</span> <span class="n">expected</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">abs</span> <span class="o">=</span> <span class="nb">abs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">rel</span> <span class="o">=</span> <span class="n">rel</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nan_ok</span> <span class="o">=</span> <span class="n">nan_ok</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_check_type</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">all</span><span class="p">(</span>
+            <span class="n">a</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">_approx_scalar</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_yield_comparisons</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="fm">__hash__</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="p">(</span><span class="n">actual</span> <span class="o">==</span> <span class="bp">self</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">__cmp__</span> <span class="o">=</span> <span class="n">_cmp_raises_type_error</span>
+
+    <span class="k">def</span> <span class="nf">_approx_scalar</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ApproxScalar</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">rel</span><span class="p">,</span> <span class="nb">abs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">abs</span><span class="p">,</span> <span class="n">nan_ok</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nan_ok</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_yield_comparisons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Yield all the pairs of numbers to be compared.  This is used to</span>
+<span class="sd">        implement the `__eq__` method.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">_check_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Raise a TypeError if the expected value is not a valid type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># This is only a concern if the expected value is a sequence.  In every</span>
+        <span class="c1"># other case, the approx() function ensures that the expected value has</span>
+        <span class="c1"># a numeric type.  For this reason, the default is to do nothing.  The</span>
+        <span class="c1"># classes that deal with sequences should reimplement this method to</span>
+        <span class="c1"># raise if there are any non-numeric elements in the sequence.</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_recursive_list_map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="n">_recursive_list_map</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">xi</span><span class="p">)</span> <span class="k">for</span> <span class="n">xi</span> <span class="ow">in</span> <span class="n">x</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxNumpy</span><span class="p">(</span><span class="n">ApproxBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform approximate comparisons where the expected value is numpy array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">list_scalars</span> <span class="o">=</span> <span class="n">_recursive_list_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_approx_scalar</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="k">return</span> <span class="s2">&quot;approx(</span><span class="si">{!r}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">list_scalars</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">__cmp__</span> <span class="o">=</span> <span class="n">_cmp_raises_type_error</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+        <span class="c1"># self.expected is supposed to always be an array here</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">actual</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">actual</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span>
+            <span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;cannot compare &#39;</span><span class="si">{}</span><span class="s2">&#39; to numpy.ndarray&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">actual</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span> <span class="ow">and</span> <span class="n">actual</span><span class="o">.</span><span class="n">shape</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">shape</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">ApproxBase</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_yield_comparisons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+        <span class="c1"># `actual` can either be a numpy array or a scalar, it is treated in</span>
+        <span class="c1"># `__eq__` before being passed to `ApproxBase.__eq__`, which is the</span>
+        <span class="c1"># only method that calls this one.</span>
+
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">isscalar</span><span class="p">(</span><span class="n">actual</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndindex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">actual</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">asscalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">ndindex</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">shape</span><span class="p">):</span>
+                <span class="k">yield</span> <span class="n">np</span><span class="o">.</span><span class="n">asscalar</span><span class="p">(</span><span class="n">actual</span><span class="p">[</span><span class="n">i</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">asscalar</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxMapping</span><span class="p">(</span><span class="n">ApproxBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform approximate comparisons where the expected value is a mapping with</span>
+<span class="sd">    numeric values (the keys can be anything).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;approx(</span><span class="si">{!r}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_approx_scalar</span><span class="p">(</span><span class="n">v</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">set</span><span class="p">(</span><span class="n">actual</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span> <span class="o">!=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">keys</span><span class="p">()):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">return</span> <span class="n">ApproxBase</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_yield_comparisons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="k">yield</span> <span class="n">actual</span><span class="p">[</span><span class="n">k</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">_check_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;pytest.approx() does not support nested dictionaries: key=</span><span class="si">{!r}</span><span class="s2"> value=</span><span class="si">{!r}</span><span class="se">\n</span><span class="s2">  full mapping=</span><span class="si">{}</span><span class="s2">&quot;</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)))</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">Number</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">_non_numeric_type_error</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">,</span> <span class="n">at</span><span class="o">=</span><span class="s2">&quot;key=</span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxSequence</span><span class="p">(</span><span class="n">ApproxBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform approximate comparisons where the expected value is a sequence of</span>
+<span class="sd">    numbers.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">seq_type</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">seq_type</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="nb">tuple</span><span class="p">,</span> <span class="nb">list</span><span class="p">,</span> <span class="nb">set</span><span class="p">):</span>
+            <span class="n">seq_type</span> <span class="o">=</span> <span class="nb">list</span>
+        <span class="k">return</span> <span class="s2">&quot;approx(</span><span class="si">{!r}</span><span class="s2">)&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+            <span class="n">seq_type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_approx_scalar</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">actual</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">return</span> <span class="n">ApproxBase</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_yield_comparisons</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">zip</span><span class="p">(</span><span class="n">actual</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_check_type</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)):</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;pytest.approx() does not support nested data structures: </span><span class="si">{!r}</span><span class="s2"> at index </span><span class="si">{}</span><span class="se">\n</span><span class="s2">  full sequence: </span><span class="si">{}</span><span class="s2">&quot;</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)))</span>
+            <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">Number</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="n">_non_numeric_type_error</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">,</span> <span class="n">at</span><span class="o">=</span><span class="s2">&quot;index </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span><span class="p">)</span>
+                <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxScalar</span><span class="p">(</span><span class="n">ApproxBase</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform approximate comparisons where the expected value is a single number.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DEFAULT_ABSOLUTE_TOLERANCE</span> <span class="o">=</span> <span class="mf">1e-12</span>
+    <span class="n">DEFAULT_RELATIVE_TOLERANCE</span> <span class="o">=</span> <span class="mf">1e-6</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a string communicating both the expected value and the tolerance</span>
+<span class="sd">        for the comparison being made, e.g. &#39;1.0 +- 1e-6&#39;.  Use the unicode</span>
+<span class="sd">        plus/minus symbol if this is python3 (it&#39;s too hard to get right for</span>
+<span class="sd">        python2).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">,</span> <span class="nb">complex</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+
+        <span class="c1"># Infinities aren&#39;t compared using tolerances, so don&#39;t show a</span>
+        <span class="c1"># tolerance.</span>
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+
+        <span class="c1"># If a sensible tolerance can&#39;t be calculated, self.tolerance will</span>
+        <span class="c1"># raise a ValueError.  In this case, display &#39;???&#39;.</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">vetted_tolerance</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">{:.1e}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tolerance</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">ValueError</span><span class="p">:</span>
+            <span class="n">vetted_tolerance</span> <span class="o">=</span> <span class="s2">&quot;???&quot;</span>
+
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> +- </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">,</span> <span class="n">vetted_tolerance</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="sa">u</span><span class="s2">&quot;</span><span class="si">{}</span><span class="s2"> </span><span class="se">\u00b1</span><span class="s2"> </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">,</span> <span class="n">vetted_tolerance</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">actual</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return true if the given value is equal to the expected value within</span>
+<span class="sd">        the pre-specified tolerance.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">_is_numpy_array</span><span class="p">(</span><span class="n">actual</span><span class="p">):</span>
+            <span class="c1"># Call ``__eq__()`` manually to prevent infinite-recursion with</span>
+            <span class="c1"># numpy&lt;1.13.  See #3748.</span>
+            <span class="k">return</span> <span class="nb">all</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="fm">__eq__</span><span class="p">(</span><span class="n">a</span><span class="p">)</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">actual</span><span class="o">.</span><span class="n">flat</span><span class="p">)</span>
+
+        <span class="c1"># Short-circuit exact equality.</span>
+        <span class="k">if</span> <span class="n">actual</span> <span class="o">==</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+
+        <span class="c1"># Allow the user to control whether NaNs are considered equal to each</span>
+        <span class="c1"># other or not.  The abs() calls are for compatibility with complex</span>
+        <span class="c1"># numbers.</span>
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">nan_ok</span> <span class="ow">and</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="n">actual</span><span class="p">))</span>
+
+        <span class="c1"># Infinity shouldn&#39;t be approximately equal to anything but itself, but</span>
+        <span class="c1"># if there&#39;s a relative tolerance, it will be infinite and infinity</span>
+        <span class="c1"># will seem approximately equal to everything.  The equal-to-itself</span>
+        <span class="c1"># case would have been short circuited above, so here we can just</span>
+        <span class="c1"># return false if the expected value is infinite.  The abs() call is</span>
+        <span class="c1"># for compatibility with complex numbers.</span>
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isinf</span><span class="p">(</span><span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="c1"># Return true if the two numbers are within the tolerance.</span>
+        <span class="k">return</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span> <span class="o">-</span> <span class="n">actual</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tolerance</span>
+
+    <span class="fm">__hash__</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">tolerance</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the tolerance for the comparison.  This could be either an</span>
+<span class="sd">        absolute tolerance or a relative tolerance, depending on what the user</span>
+<span class="sd">        specified or which would be larger.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">def</span> <span class="nf">set_default</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">default</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">x</span> <span class="k">if</span> <span class="n">x</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">default</span>
+
+        <span class="c1"># Figure out what the absolute tolerance should be.  ``self.abs`` is</span>
+        <span class="c1"># either None or a value specified by the user.</span>
+        <span class="n">absolute_tolerance</span> <span class="o">=</span> <span class="n">set_default</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">abs</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_ABSOLUTE_TOLERANCE</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">absolute_tolerance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;absolute tolerance can&#39;t be negative: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">absolute_tolerance</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">absolute_tolerance</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;absolute tolerance can&#39;t be NaN.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># If the user specified an absolute tolerance but not a relative one,</span>
+        <span class="c1"># just return the absolute tolerance.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">rel</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">abs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">absolute_tolerance</span>
+
+        <span class="c1"># Figure out what the relative tolerance should be.  ``self.rel`` is</span>
+        <span class="c1"># either None or a value specified by the user.  This is done after</span>
+        <span class="c1"># we&#39;ve made sure the user didn&#39;t ask for an absolute tolerance only,</span>
+        <span class="c1"># because we don&#39;t want to raise errors about the relative tolerance if</span>
+        <span class="c1"># we aren&#39;t even going to use it.</span>
+        <span class="n">relative_tolerance</span> <span class="o">=</span> <span class="n">set_default</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">rel</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">DEFAULT_RELATIVE_TOLERANCE</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">expected</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">relative_tolerance</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;relative tolerance can&#39;t be negative: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">absolute_tolerance</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">math</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">relative_tolerance</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;relative tolerance can&#39;t be NaN.&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Return the larger of the relative and absolute tolerances.</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="n">relative_tolerance</span><span class="p">,</span> <span class="n">absolute_tolerance</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ApproxDecimal</span><span class="p">(</span><span class="n">ApproxScalar</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Perform approximate comparisons where the expected value is a decimal.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">DEFAULT_ABSOLUTE_TOLERANCE</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1e-12&quot;</span><span class="p">)</span>
+    <span class="n">DEFAULT_RELATIVE_TOLERANCE</span> <span class="o">=</span> <span class="n">Decimal</span><span class="p">(</span><span class="s2">&quot;1e-6&quot;</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="approx"><a class="viewcode-back" href="../../reference.html#_pytest.python_api.approx">[docs]</a><span class="k">def</span> <span class="nf">approx</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">rel</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="nb">abs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nan_ok</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assert that two numbers (or two sets of numbers) are equal to each other</span>
+<span class="sd">    within some tolerance.</span>
+
+<span class="sd">    Due to the `intricacies of floating-point arithmetic`__, numbers that we</span>
+<span class="sd">    would intuitively expect to be equal are not always so::</span>
+
+<span class="sd">        &gt;&gt;&gt; 0.1 + 0.2 == 0.3</span>
+<span class="sd">        False</span>
+
+<span class="sd">    __ https://docs.python.org/3/tutorial/floatingpoint.html</span>
+
+<span class="sd">    This problem is commonly encountered when writing tests, e.g. when making</span>
+<span class="sd">    sure that floating-point values are what you expect them to be.  One way to</span>
+<span class="sd">    deal with this problem is to assert that two floating-point numbers are</span>
+<span class="sd">    equal to within some appropriate tolerance::</span>
+
+<span class="sd">        &gt;&gt;&gt; abs((0.1 + 0.2) - 0.3) &lt; 1e-6</span>
+<span class="sd">        True</span>
+
+<span class="sd">    However, comparisons like this are tedious to write and difficult to</span>
+<span class="sd">    understand.  Furthermore, absolute comparisons like the one above are</span>
+<span class="sd">    usually discouraged because there&#39;s no tolerance that works well for all</span>
+<span class="sd">    situations.  ``1e-6`` is good for numbers around ``1``, but too small for</span>
+<span class="sd">    very big numbers and too big for very small ones.  It&#39;s better to express</span>
+<span class="sd">    the tolerance as a fraction of the expected value, but relative comparisons</span>
+<span class="sd">    like that are even more difficult to write correctly and concisely.</span>
+
+<span class="sd">    The ``approx`` class performs floating-point comparisons using a syntax</span>
+<span class="sd">    that&#39;s as intuitive as possible::</span>
+
+<span class="sd">        &gt;&gt;&gt; from pytest import approx</span>
+<span class="sd">        &gt;&gt;&gt; 0.1 + 0.2 == approx(0.3)</span>
+<span class="sd">        True</span>
+
+<span class="sd">    The same syntax also works for sequences of numbers::</span>
+
+<span class="sd">        &gt;&gt;&gt; (0.1 + 0.2, 0.2 + 0.4) == approx((0.3, 0.6))</span>
+<span class="sd">        True</span>
+
+<span class="sd">    Dictionary *values*::</span>
+
+<span class="sd">        &gt;&gt;&gt; {&#39;a&#39;: 0.1 + 0.2, &#39;b&#39;: 0.2 + 0.4} == approx({&#39;a&#39;: 0.3, &#39;b&#39;: 0.6})</span>
+<span class="sd">        True</span>
+
+<span class="sd">    ``numpy`` arrays::</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np                                                          # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; np.array([0.1, 0.2]) + np.array([0.2, 0.4]) == approx(np.array([0.3, 0.6])) # doctest: +SKIP</span>
+<span class="sd">        True</span>
+
+<span class="sd">    And for a ``numpy`` array against a scalar::</span>
+
+<span class="sd">        &gt;&gt;&gt; import numpy as np                                         # doctest: +SKIP</span>
+<span class="sd">        &gt;&gt;&gt; np.array([0.1, 0.2]) + np.array([0.2, 0.1]) == approx(0.3) # doctest: +SKIP</span>
+<span class="sd">        True</span>
+
+<span class="sd">    By default, ``approx`` considers numbers within a relative tolerance of</span>
+<span class="sd">    ``1e-6`` (i.e. one part in a million) of its expected value to be equal.</span>
+<span class="sd">    This treatment would lead to surprising results if the expected value was</span>
+<span class="sd">    ``0.0``, because nothing but ``0.0`` itself is relatively close to ``0.0``.</span>
+<span class="sd">    To handle this case less surprisingly, ``approx`` also considers numbers</span>
+<span class="sd">    within an absolute tolerance of ``1e-12`` of its expected value to be</span>
+<span class="sd">    equal.  Infinity and NaN are special cases.  Infinity is only considered</span>
+<span class="sd">    equal to itself, regardless of the relative tolerance.  NaN is not</span>
+<span class="sd">    considered equal to anything by default, but you can make it be equal to</span>
+<span class="sd">    itself by setting the ``nan_ok`` argument to True.  (This is meant to</span>
+<span class="sd">    facilitate comparing arrays that use NaN to mean &quot;no data&quot;.)</span>
+
+<span class="sd">    Both the relative and absolute tolerances can be changed by passing</span>
+<span class="sd">    arguments to the ``approx`` constructor::</span>
+
+<span class="sd">        &gt;&gt;&gt; 1.0001 == approx(1)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; 1.0001 == approx(1, rel=1e-3)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; 1.0001 == approx(1, abs=1e-3)</span>
+<span class="sd">        True</span>
+
+<span class="sd">    If you specify ``abs`` but not ``rel``, the comparison will not consider</span>
+<span class="sd">    the relative tolerance at all.  In other words, two numbers that are within</span>
+<span class="sd">    the default relative tolerance of ``1e-6`` will still be considered unequal</span>
+<span class="sd">    if they exceed the specified absolute tolerance.  If you specify both</span>
+<span class="sd">    ``abs`` and ``rel``, the numbers will be considered equal if either</span>
+<span class="sd">    tolerance is met::</span>
+
+<span class="sd">        &gt;&gt;&gt; 1 + 1e-8 == approx(1)</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; 1 + 1e-8 == approx(1, abs=1e-12)</span>
+<span class="sd">        False</span>
+<span class="sd">        &gt;&gt;&gt; 1 + 1e-8 == approx(1, rel=1e-6, abs=1e-12)</span>
+<span class="sd">        True</span>
+
+<span class="sd">    If you&#39;re thinking about using ``approx``, then you might want to know how</span>
+<span class="sd">    it compares to other good ways of comparing floating-point numbers.  All of</span>
+<span class="sd">    these algorithms are based on relative and absolute tolerances and should</span>
+<span class="sd">    agree for the most part, but they do have meaningful differences:</span>
+
+<span class="sd">    - ``math.isclose(a, b, rel_tol=1e-9, abs_tol=0.0)``:  True if the relative</span>
+<span class="sd">      tolerance is met w.r.t. either ``a`` or ``b`` or if the absolute</span>
+<span class="sd">      tolerance is met.  Because the relative tolerance is calculated w.r.t.</span>
+<span class="sd">      both ``a`` and ``b``, this test is symmetric (i.e.  neither ``a`` nor</span>
+<span class="sd">      ``b`` is a &quot;reference value&quot;).  You have to specify an absolute tolerance</span>
+<span class="sd">      if you want to compare to ``0.0`` because there is no tolerance by</span>
+<span class="sd">      default.  Only available in python&gt;=3.5.  `More information...`__</span>
+
+<span class="sd">      __ https://docs.python.org/3/library/math.html#math.isclose</span>
+
+<span class="sd">    - ``numpy.isclose(a, b, rtol=1e-5, atol=1e-8)``: True if the difference</span>
+<span class="sd">      between ``a`` and ``b`` is less that the sum of the relative tolerance</span>
+<span class="sd">      w.r.t. ``b`` and the absolute tolerance.  Because the relative tolerance</span>
+<span class="sd">      is only calculated w.r.t. ``b``, this test is asymmetric and you can</span>
+<span class="sd">      think of ``b`` as the reference value.  Support for comparing sequences</span>
+<span class="sd">      is provided by ``numpy.allclose``.  `More information...`__</span>
+
+<span class="sd">      __ http://docs.scipy.org/doc/numpy-1.10.0/reference/generated/numpy.isclose.html</span>
+
+<span class="sd">    - ``unittest.TestCase.assertAlmostEqual(a, b)``: True if ``a`` and ``b``</span>
+<span class="sd">      are within an absolute tolerance of ``1e-7``.  No relative tolerance is</span>
+<span class="sd">      considered and the absolute tolerance cannot be changed, so this function</span>
+<span class="sd">      is not appropriate for very large or very small numbers.  Also, it&#39;s only</span>
+<span class="sd">      available in subclasses of ``unittest.TestCase`` and it&#39;s ugly because it</span>
+<span class="sd">      doesn&#39;t follow PEP8.  `More information...`__</span>
+
+<span class="sd">      __ https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertAlmostEqual</span>
+
+<span class="sd">    - ``a == pytest.approx(b, rel=1e-6, abs=1e-12)``: True if the relative</span>
+<span class="sd">      tolerance is met w.r.t. ``b`` or if the absolute tolerance is met.</span>
+<span class="sd">      Because the relative tolerance is only calculated w.r.t. ``b``, this test</span>
+<span class="sd">      is asymmetric and you can think of ``b`` as the reference value.  In the</span>
+<span class="sd">      special case that you explicitly specify an absolute tolerance but not a</span>
+<span class="sd">      relative tolerance, only the absolute tolerance is considered.</span>
+
+<span class="sd">    .. warning::</span>
+
+<span class="sd">       .. versionchanged:: 3.2</span>
+
+<span class="sd">       In order to avoid inconsistent behavior, ``TypeError`` is</span>
+<span class="sd">       raised for ``&gt;``, ``&gt;=``, ``&lt;`` and ``&lt;=`` comparisons.</span>
+<span class="sd">       The example below illustrates the problem::</span>
+
+<span class="sd">           assert approx(0.1) &gt; 0.1 + 1e-10  # calls approx(0.1).__gt__(0.1 + 1e-10)</span>
+<span class="sd">           assert 0.1 + 1e-10 &gt; approx(0.1)  # calls approx(0.1).__lt__(0.1 + 1e-10)</span>
+
+<span class="sd">       In the second example one expects ``approx(0.1).__le__(0.1 + 1e-10)``</span>
+<span class="sd">       to be called. But instead, ``approx(0.1).__lt__(0.1 + 1e-10)`` is used to</span>
+<span class="sd">       comparison. This is because the call hierarchy of rich comparisons</span>
+<span class="sd">       follows a fixed behavior. `More information...`__</span>
+
+<span class="sd">       __ https://docs.python.org/3/reference/datamodel.html#object.__ge__</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="c1"># Delegate the comparison to a class that knows how to deal with the type</span>
+    <span class="c1"># of the expected value (e.g. int, float, list, dict, numpy.array, etc).</span>
+    <span class="c1">#</span>
+    <span class="c1"># The primary responsibility of these classes is to implement ``__eq__()``</span>
+    <span class="c1"># and ``__repr__()``.  The former is used to actually check if some</span>
+    <span class="c1"># &quot;actual&quot; value is equivalent to the given expected value within the</span>
+    <span class="c1"># allowed tolerance.  The latter is used to show the user the expected</span>
+    <span class="c1"># value and tolerance, in the case that a test failed.</span>
+    <span class="c1">#</span>
+    <span class="c1"># The actual logic for making approximate comparisons can be found in</span>
+    <span class="c1"># ApproxScalar, which is used to compare individual numbers.  All of the</span>
+    <span class="c1"># other Approx classes eventually delegate to this class.  The ApproxBase</span>
+    <span class="c1"># class provides some convenient methods and overloads, but isn&#39;t really</span>
+    <span class="c1"># essential.</span>
+
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">Decimal</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">ApproxDecimal</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">Number</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">ApproxScalar</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">ApproxMapping</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">STRING_TYPES</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">ApproxSequence</span>
+    <span class="k">elif</span> <span class="n">_is_numpy_array</span><span class="p">(</span><span class="n">expected</span><span class="p">):</span>
+        <span class="bp">cls</span> <span class="o">=</span> <span class="n">ApproxNumpy</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">_non_numeric_type_error</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">at</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">cls</span><span class="p">(</span><span class="n">expected</span><span class="p">,</span> <span class="n">rel</span><span class="p">,</span> <span class="nb">abs</span><span class="p">,</span> <span class="n">nan_ok</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_is_numpy_array</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return true if the given object is a numpy array.  Make a special effort to</span>
+<span class="sd">    avoid importing numpy unless it&#39;s really necessary.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="n">np</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;numpy&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">np</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="c1"># builtin pytest.raises helper</span>
+
+
+<div class="viewcode-block" id="raises"><a class="viewcode-back" href="../../reference.html#_pytest.python_api.raises">[docs]</a><span class="k">def</span> <span class="nf">raises</span><span class="p">(</span><span class="n">expected_exception</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Assert that a code block/function call raises ``expected_exception``</span>
+<span class="sd">    and raise a failure exception otherwise.</span>
+
+<span class="sd">    :arg message: if specified, provides a custom failure message if the</span>
+<span class="sd">        exception is not raised</span>
+<span class="sd">    :arg match: if specified, asserts that the exception matches a text or regex</span>
+
+<span class="sd">    This helper produces a ``ExceptionInfo()`` object (see below).</span>
+
+<span class="sd">    You may use this function as a context manager::</span>
+
+<span class="sd">        &gt;&gt;&gt; with raises(ZeroDivisionError):</span>
+<span class="sd">        ...    1/0</span>
+
+<span class="sd">    .. versionchanged:: 2.10</span>
+
+<span class="sd">    In the context manager form you may use the keyword argument</span>
+<span class="sd">    ``message`` to specify a custom failure message::</span>
+
+<span class="sd">        &gt;&gt;&gt; with raises(ZeroDivisionError, message=&quot;Expecting ZeroDivisionError&quot;):</span>
+<span class="sd">        ...    pass</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">          ...</span>
+<span class="sd">        Failed: Expecting ZeroDivisionError</span>
+
+<span class="sd">    .. note::</span>
+
+<span class="sd">       When using ``pytest.raises`` as a context manager, it&#39;s worthwhile to</span>
+<span class="sd">       note that normal context manager rules apply and that the exception</span>
+<span class="sd">       raised *must* be the final line in the scope of the context manager.</span>
+<span class="sd">       Lines of code after that, within the scope of the context manager will</span>
+<span class="sd">       not be executed. For example::</span>
+
+<span class="sd">           &gt;&gt;&gt; value = 15</span>
+<span class="sd">           &gt;&gt;&gt; with raises(ValueError) as exc_info:</span>
+<span class="sd">           ...     if value &gt; 10:</span>
+<span class="sd">           ...         raise ValueError(&quot;value must be &lt;= 10&quot;)</span>
+<span class="sd">           ...     assert exc_info.type == ValueError  # this will not execute</span>
+
+<span class="sd">       Instead, the following approach must be taken (note the difference in</span>
+<span class="sd">       scope)::</span>
+
+<span class="sd">           &gt;&gt;&gt; with raises(ValueError) as exc_info:</span>
+<span class="sd">           ...     if value &gt; 10:</span>
+<span class="sd">           ...         raise ValueError(&quot;value must be &lt;= 10&quot;)</span>
+<span class="sd">           ...</span>
+<span class="sd">           &gt;&gt;&gt; assert exc_info.type == ValueError</span>
+
+
+<span class="sd">    Since version ``3.1`` you can use the keyword argument ``match`` to assert that the</span>
+<span class="sd">    exception matches a text or regex::</span>
+
+<span class="sd">        &gt;&gt;&gt; with raises(ValueError, match=&#39;must be 0 or None&#39;):</span>
+<span class="sd">        ...     raise ValueError(&quot;value must be 0 or None&quot;)</span>
+
+<span class="sd">        &gt;&gt;&gt; with raises(ValueError, match=r&#39;must be \d+$&#39;):</span>
+<span class="sd">        ...     raise ValueError(&quot;value must be 42&quot;)</span>
+
+<span class="sd">    **Legacy forms**</span>
+
+<span class="sd">    The forms below are fully supported but are discouraged for new code because the</span>
+<span class="sd">    context manager form is regarded as more readable and less error-prone.</span>
+
+<span class="sd">    It is possible to specify a callable by passing a to-be-called lambda::</span>
+
+<span class="sd">        &gt;&gt;&gt; raises(ZeroDivisionError, lambda: 1/0)</span>
+<span class="sd">        &lt;ExceptionInfo ...&gt;</span>
+
+<span class="sd">    or you can specify an arbitrary callable with arguments::</span>
+
+<span class="sd">        &gt;&gt;&gt; def f(x): return 1/x</span>
+<span class="sd">        ...</span>
+<span class="sd">        &gt;&gt;&gt; raises(ZeroDivisionError, f, 0)</span>
+<span class="sd">        &lt;ExceptionInfo ...&gt;</span>
+<span class="sd">        &gt;&gt;&gt; raises(ZeroDivisionError, f, x=0)</span>
+<span class="sd">        &lt;ExceptionInfo ...&gt;</span>
+
+<span class="sd">    It is also possible to pass a string to be evaluated at runtime::</span>
+
+<span class="sd">        &gt;&gt;&gt; raises(ZeroDivisionError, &quot;f(0)&quot;)</span>
+<span class="sd">        &lt;ExceptionInfo ...&gt;</span>
+
+<span class="sd">    The string will be evaluated using the same ``locals()`` and ``globals()``</span>
+<span class="sd">    at the moment of the ``raises`` call.</span>
+
+<span class="sd">    .. currentmodule:: _pytest._code</span>
+
+<span class="sd">    Consult the API of ``excinfo`` objects: :class:`ExceptionInfo`.</span>
+
+<span class="sd">    .. note::</span>
+<span class="sd">        Similar to caught exception objects in Python, explicitly clearing</span>
+<span class="sd">        local references to returned ``ExceptionInfo`` objects can</span>
+<span class="sd">        help the Python interpreter speed up its garbage collection.</span>
+
+<span class="sd">        Clearing those references breaks a reference cycle</span>
+<span class="sd">        (``ExceptionInfo`` --&gt; caught exception --&gt; frame stack raising</span>
+<span class="sd">        the exception --&gt; current frame stack --&gt; local variables --&gt;</span>
+<span class="sd">        ``ExceptionInfo``) which makes Python keep all objects referenced</span>
+<span class="sd">        from that cycle (including all local variables in the current</span>
+<span class="sd">        frame) alive until the next cyclic garbage collection run. See the</span>
+<span class="sd">        official Python ``try`` statement documentation for more detailed</span>
+<span class="sd">        information.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">for</span> <span class="n">exc</span> <span class="ow">in</span> <span class="n">filterfalse</span><span class="p">(</span><span class="n">isclass</span><span class="p">,</span> <span class="n">always_iterable</span><span class="p">(</span><span class="n">expected_exception</span><span class="p">,</span> <span class="n">BASE_TYPE</span><span class="p">)):</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;exceptions must be old-style classes or&quot;</span>
+            <span class="s2">&quot; derived from BaseException, not </span><span class="si">%s</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;DID NOT RAISE </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">expected_exception</span><span class="p">)</span>
+    <span class="n">match_expr</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;message&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;message&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;match&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">match_expr</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;match&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;Unexpected keyword arguments passed to pytest.raises: &quot;</span>
+            <span class="n">msg</span> <span class="o">+=</span> <span class="s2">&quot;, &quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">kwargs</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">RaisesContext</span><span class="p">(</span><span class="n">expected_exception</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">match_expr</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">code</span><span class="p">,</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">loc</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="c1"># print &quot;raises frame scope: %r&quot; % frame.f_locals</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+            <span class="n">six</span><span class="o">.</span><span class="n">exec_</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+            <span class="c1"># XXX didn&#39;t mean f_globals == f_locals something special?</span>
+            <span class="c1">#     this is destroyed here ...</span>
+        <span class="k">except</span> <span class="n">expected_exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">ExceptionInfo</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">expected_exception</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">ExceptionInfo</span><span class="p">()</span>
+    <span class="n">fail</span><span class="p">(</span><span class="n">message</span><span class="p">)</span></div>
+
+
+<span class="n">raises</span><span class="o">.</span><span class="n">Exception</span> <span class="o">=</span> <span class="n">fail</span><span class="o">.</span><span class="n">Exception</span>
+
+
+<span class="k">class</span> <span class="nc">RaisesContext</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expected_exception</span><span class="p">,</span> <span class="n">message</span><span class="p">,</span> <span class="n">match_expr</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected_exception</span> <span class="o">=</span> <span class="n">expected_exception</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span> <span class="o">=</span> <span class="n">match_expr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span> <span class="o">=</span> <span class="nb">object</span><span class="o">.</span><span class="fm">__new__</span><span class="p">(</span><span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">ExceptionInfo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">tp</span><span class="p">):</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="n">tp</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fail</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">message</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tp</span><span class="p">)</span>
+        <span class="n">suppress_exception</span> <span class="o">=</span> <span class="nb">issubclass</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_exception</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span> <span class="ow">and</span> <span class="n">suppress_exception</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">exc_clear</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span> <span class="ow">and</span> <span class="n">suppress_exception</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">excinfo</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">suppress_exception</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

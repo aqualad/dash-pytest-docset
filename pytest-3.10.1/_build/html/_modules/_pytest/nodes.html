@@ -1,0 +1,603 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.nodes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.nodes</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">import</span> <span class="nn">py</span>
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="kn">import</span> <span class="nn">_pytest._code</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">getfslineno</span>
+<span class="kn">from</span> <span class="nn">_pytest.mark.structures</span> <span class="kn">import</span> <span class="n">MarkInfo</span>
+<span class="kn">from</span> <span class="nn">_pytest.mark.structures</span> <span class="kn">import</span> <span class="n">NodeKeywords</span>
+<span class="kn">from</span> <span class="nn">_pytest.outcomes</span> <span class="kn">import</span> <span class="n">fail</span>
+
+<span class="n">SEP</span> <span class="o">=</span> <span class="s2">&quot;/&quot;</span>
+
+<span class="n">tracebackcutdir</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">_pytest</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">dirpath</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">_splitnode</span><span class="p">(</span><span class="n">nodeid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Split a nodeid into constituent &#39;parts&#39;.</span>
+
+<span class="sd">    Node IDs are strings, and can be things like:</span>
+<span class="sd">        &#39;&#39;</span>
+<span class="sd">        &#39;testing/code&#39;</span>
+<span class="sd">        &#39;testing/code/test_excinfo.py&#39;</span>
+<span class="sd">        &#39;testing/code/test_excinfo.py::TestFormattedExcinfo::()&#39;</span>
+
+<span class="sd">    Return values are lists e.g.</span>
+<span class="sd">        []</span>
+<span class="sd">        [&#39;testing&#39;, &#39;code&#39;]</span>
+<span class="sd">        [&#39;testing&#39;, &#39;code&#39;, &#39;test_excinfo.py&#39;]</span>
+<span class="sd">        [&#39;testing&#39;, &#39;code&#39;, &#39;test_excinfo.py&#39;, &#39;TestFormattedExcinfo&#39;, &#39;()&#39;]</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">nodeid</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+        <span class="c1"># If there is no root node at all, return an empty list so the caller&#39;s logic can remain sane</span>
+        <span class="k">return</span> <span class="p">[]</span>
+    <span class="n">parts</span> <span class="o">=</span> <span class="n">nodeid</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">SEP</span><span class="p">)</span>
+    <span class="c1"># Replace single last element &#39;test_foo.py::Bar::()&#39; with multiple elements &#39;test_foo.py&#39;, &#39;Bar&#39;, &#39;()&#39;</span>
+    <span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;::&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">parts</span>
+
+
+<span class="k">def</span> <span class="nf">ischildnode</span><span class="p">(</span><span class="n">baseid</span><span class="p">,</span> <span class="n">nodeid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return True if the nodeid is a child node of the baseid.</span>
+
+<span class="sd">    E.g. &#39;foo/bar::Baz::()&#39; is a child of &#39;foo&#39;, &#39;foo/bar&#39; and &#39;foo/bar::Baz&#39;, but not of &#39;foo/blorp&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">base_parts</span> <span class="o">=</span> <span class="n">_splitnode</span><span class="p">(</span><span class="n">baseid</span><span class="p">)</span>
+    <span class="n">node_parts</span> <span class="o">=</span> <span class="n">_splitnode</span><span class="p">(</span><span class="n">nodeid</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">node_parts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">base_parts</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="k">return</span> <span class="n">node_parts</span><span class="p">[:</span> <span class="nb">len</span><span class="p">(</span><span class="n">base_parts</span><span class="p">)]</span> <span class="o">==</span> <span class="n">base_parts</span>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">_CompatProperty</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">name</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__get__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">,</span> <span class="n">owner</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span>
+
+        <span class="kn">from</span> <span class="nn">_pytest.deprecated</span> <span class="kn">import</span> <span class="n">COMPAT_PROPERTY</span>
+
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="n">COMPAT_PROPERTY</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">owner</span><span class="o">=</span><span class="n">owner</span><span class="o">.</span><span class="vm">__name__</span><span class="p">),</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">2</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">__import__</span><span class="p">(</span><span class="s2">&quot;pytest&quot;</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Node"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node">[docs]</a><span class="k">class</span> <span class="nc">Node</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; base class for Collector and Item the test collection tree.</span>
+<span class="sd">    Collector subclasses have children, Items are terminal nodes.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fspath</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+        <span class="c1">#: a unique name within the scope of the parent node</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+
+        <span class="c1">#: the parent collector node.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parent</span> <span class="o">=</span> <span class="n">parent</span>
+
+        <span class="c1">#: the pytest config object</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="o">=</span> <span class="n">config</span> <span class="ow">or</span> <span class="n">parent</span><span class="o">.</span><span class="n">config</span>
+
+        <span class="c1">#: the session this node is part of</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span> <span class="o">=</span> <span class="n">session</span> <span class="ow">or</span> <span class="n">parent</span><span class="o">.</span><span class="n">session</span>
+
+        <span class="c1">#: filesystem path where this node was collected from (can be None)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fspath</span> <span class="o">=</span> <span class="n">fspath</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">parent</span><span class="p">,</span> <span class="s2">&quot;fspath&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+        <span class="c1">#: keywords/markers collected from all scopes</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span> <span class="o">=</span> <span class="n">NodeKeywords</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+
+        <span class="c1">#: the marker objects belonging to this node</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">own_markers</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1">#: allow adding of extra keywords to use for matching</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extra_keyword_matches</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># used for storing artificial fixturedefs for direct parametrization</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_name2pseudofixturedef</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="n">nodeid</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nodeid</span> <span class="o">=</span> <span class="n">nodeid</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_nodeid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">nodeid</span> <span class="o">+</span> <span class="s2">&quot;::&quot;</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">ihook</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; fspath sensitive hook proxy used to call pytest hooks&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">gethookproxy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fspath</span><span class="p">)</span>
+
+    <span class="n">Module</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;Module&quot;</span><span class="p">)</span>
+    <span class="n">Class</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;Class&quot;</span><span class="p">)</span>
+    <span class="n">Instance</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;Instance&quot;</span><span class="p">)</span>
+    <span class="n">Function</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;Function&quot;</span><span class="p">)</span>
+    <span class="n">File</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;File&quot;</span><span class="p">)</span>
+    <span class="n">Item</span> <span class="o">=</span> <span class="n">_CompatProperty</span><span class="p">(</span><span class="s2">&quot;Item&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getcustomclass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="n">maybe_compatprop</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">),</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">maybe_compatprop</span><span class="p">,</span> <span class="n">_CompatProperty</span><span class="p">):</span>
+            <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">__import__</span><span class="p">(</span><span class="s2">&quot;pytest&quot;</span><span class="p">),</span> <span class="n">name</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="kn">from</span> <span class="nn">_pytest.deprecated</span> <span class="kn">import</span> <span class="n">CUSTOM_CLASS</span>
+
+            <span class="bp">cls</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="n">CUSTOM_CLASS</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">type_name</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">))</span>
+        <span class="k">return</span> <span class="bp">cls</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;</span><span class="si">%s</span><span class="s2"> </span><span class="si">%r</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+<div class="viewcode-block" id="Node.warn"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.warn">[docs]</a>    <span class="k">def</span> <span class="nf">warn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">_code_or_warning</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">code</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Issue a warning for this item.</span>
+
+<span class="sd">        Warnings will be displayed after the test session, unless explicitly suppressed.</span>
+
+<span class="sd">        This can be called in two forms:</span>
+
+<span class="sd">        **Warning instance**</span>
+
+<span class="sd">        This was introduced in pytest 3.8 and uses the standard warning mechanism to issue warnings.</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            node.warn(PytestWarning(&quot;some message&quot;))</span>
+
+<span class="sd">        The warning instance must be a subclass of :class:`pytest.PytestWarning`.</span>
+
+<span class="sd">        **code/message (deprecated)**</span>
+
+<span class="sd">        This form was used in pytest prior to 3.8 and is considered deprecated. Using this form will emit another</span>
+<span class="sd">        warning about the deprecation:</span>
+
+<span class="sd">        .. code-block:: python</span>
+
+<span class="sd">            node.warn(&quot;CI&quot;, &quot;some message&quot;)</span>
+
+<span class="sd">        :param Union[Warning,str] _code_or_warning:</span>
+<span class="sd">            warning instance or warning code (legacy). This parameter receives an underscore for backward</span>
+<span class="sd">            compatibility with the legacy code/message form, and will be replaced for something</span>
+<span class="sd">            more usual when the legacy form is removed.</span>
+
+<span class="sd">        :param Union[str,None] message: message to display when called in the legacy form.</span>
+<span class="sd">        :param str code: code for the warning, in legacy form when using keyword arguments.</span>
+<span class="sd">        :return:</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">message</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_code_or_warning</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;code_or_warning must be given&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_std_warn</span><span class="p">(</span><span class="n">_code_or_warning</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">_code_or_warning</span> <span class="ow">and</span> <span class="n">code</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;code_or_warning and code cannot both be passed to this function&quot;</span>
+                <span class="p">)</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">_code_or_warning</span> <span class="ow">or</span> <span class="n">code</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_legacy_warn</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_legacy_warn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        .. deprecated:: 3.8</span>
+
+<span class="sd">            Use :meth:`Node.std_warn &lt;_pytest.nodes.Node.std_warn&gt;` instead.</span>
+
+<span class="sd">        Generate a warning with the given code and message for this item.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">_pytest.deprecated</span> <span class="kn">import</span> <span class="n">NODE_WARN</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_std_warn</span><span class="p">(</span><span class="n">NODE_WARN</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="n">fslocation</span> <span class="o">=</span> <span class="n">get_fslocation_from_item</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ihook</span><span class="o">.</span><span class="n">pytest_logwarning</span><span class="o">.</span><span class="n">call_historic</span><span class="p">(</span>
+            <span class="n">kwargs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                <span class="n">code</span><span class="o">=</span><span class="n">code</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">fslocation</span><span class="o">=</span><span class="n">fslocation</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_std_warn</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">warning</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Issue a warning for this item.</span>
+
+<span class="sd">        Warnings will be displayed after the test session, unless explicitly suppressed</span>
+
+<span class="sd">        :param Warning warning: the warning instance to issue. Must be a subclass of PytestWarning.</span>
+
+<span class="sd">        :raise ValueError: if ``warning`` instance is not a subclass of PytestWarning.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">_pytest.warning_types</span> <span class="kn">import</span> <span class="n">PytestWarning</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">warning</span><span class="p">,</span> <span class="n">PytestWarning</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;warning must be an instance of PytestWarning or subclass, got </span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                    <span class="n">warning</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">path</span><span class="p">,</span> <span class="n">lineno</span> <span class="o">=</span> <span class="n">get_fslocation_from_item</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn_explicit</span><span class="p">(</span>
+            <span class="n">warning</span><span class="p">,</span>
+            <span class="n">category</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+            <span class="n">filename</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">),</span>
+            <span class="n">lineno</span><span class="o">=</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span> <span class="k">if</span> <span class="n">lineno</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="c1"># methods for ordering nodes</span>
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">nodeid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; a ::-separated string denoting its collection tree address. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nodeid</span>
+
+    <span class="k">def</span> <span class="fm">__hash__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">hash</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nodeid</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+<div class="viewcode-block" id="Node.listchain"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.listchain">[docs]</a>    <span class="k">def</span> <span class="nf">listchain</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return list of all parent collectors up to self,</span>
+<span class="sd">            starting from root of collection tree. &quot;&quot;&quot;</span>
+        <span class="n">chain</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">while</span> <span class="n">item</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">chain</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="n">item</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">parent</span>
+        <span class="n">chain</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">chain</span></div>
+
+<div class="viewcode-block" id="Node.add_marker"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.add_marker">[docs]</a>    <span class="k">def</span> <span class="nf">add_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">marker</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;dynamically add a marker object to the node.</span>
+
+<span class="sd">        :type marker: ``str`` or ``pytest.mark.*``  object</span>
+<span class="sd">        :param marker:</span>
+<span class="sd">            ``append=True`` whether to append the marker,</span>
+<span class="sd">            if ``False`` insert at position ``0``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">_pytest.mark</span> <span class="kn">import</span> <span class="n">MarkDecorator</span><span class="p">,</span> <span class="n">MARK_GEN</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">marker</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">string_types</span><span class="p">):</span>
+            <span class="n">marker</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">MARK_GEN</span><span class="p">,</span> <span class="n">marker</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">marker</span><span class="p">,</span> <span class="n">MarkDecorator</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;is not a string or pytest.mark.* Marker&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">keywords</span><span class="p">[</span><span class="n">marker</span><span class="o">.</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">marker</span>
+        <span class="k">if</span> <span class="n">append</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">own_markers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">marker</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">own_markers</span><span class="o">.</span><span class="n">insert</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">marker</span><span class="o">.</span><span class="n">mark</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Node.iter_markers"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.iter_markers">[docs]</a>    <span class="k">def</span> <span class="nf">iter_markers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param name: if given, filter the results by the name attribute</span>
+
+<span class="sd">        iterate over all markers of the node</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">iter_markers_with_node</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">))</span></div>
+
+<div class="viewcode-block" id="Node.iter_markers_with_node"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.iter_markers_with_node">[docs]</a>    <span class="k">def</span> <span class="nf">iter_markers_with_node</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param name: if given, filter the results by the name attribute</span>
+
+<span class="sd">        iterate over all markers of the node</span>
+<span class="sd">        returns sequence of tuples (node, mark)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">node</span> <span class="ow">in</span> <span class="nb">reversed</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">listchain</span><span class="p">()):</span>
+            <span class="k">for</span> <span class="n">mark</span> <span class="ow">in</span> <span class="n">node</span><span class="o">.</span><span class="n">own_markers</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">mark</span><span class="p">,</span> <span class="s2">&quot;name&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="o">==</span> <span class="n">name</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">node</span><span class="p">,</span> <span class="n">mark</span></div>
+
+<div class="viewcode-block" id="Node.get_closest_marker"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.get_closest_marker">[docs]</a>    <span class="k">def</span> <span class="nf">get_closest_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;return the first marker matching the name, from closest (for example function) to farther level (for example</span>
+<span class="sd">        module level).</span>
+
+<span class="sd">        :param default: fallback return value of no marker was found</span>
+<span class="sd">        :param name: name to filter by</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">next</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">),</span> <span class="n">default</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Node.get_marker"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.get_marker">[docs]</a>    <span class="k">def</span> <span class="nf">get_marker</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; get a marker object from this node or None if</span>
+<span class="sd">        the node doesn&#39;t have a marker with that name.</span>
+
+<span class="sd">        .. deprecated:: 3.6</span>
+<span class="sd">            This function has been deprecated in favor of</span>
+<span class="sd">            :meth:`Node.get_closest_marker &lt;_pytest.nodes.Node.get_closest_marker&gt;` and</span>
+<span class="sd">            :meth:`Node.iter_markers &lt;_pytest.nodes.Node.iter_markers&gt;`, see :ref:`update marker code`</span>
+<span class="sd">            for more details.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">markers</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">markers</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MarkInfo</span><span class="p">(</span><span class="n">markers</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Node.listextrakeywords"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.listextrakeywords">[docs]</a>    <span class="k">def</span> <span class="nf">listextrakeywords</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Return a set of all extra keywords in self and any parents.&quot;&quot;&quot;</span>
+        <span class="n">extra_keywords</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listchain</span><span class="p">():</span>
+            <span class="n">extra_keywords</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">extra_keyword_matches</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">extra_keywords</span></div>
+
+    <span class="k">def</span> <span class="nf">listnames</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">[</span><span class="n">x</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">listchain</span><span class="p">()]</span>
+
+<div class="viewcode-block" id="Node.addfinalizer"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.addfinalizer">[docs]</a>    <span class="k">def</span> <span class="nf">addfinalizer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fin</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; register a function to be called when this node is finalized.</span>
+
+<span class="sd">        This method can only be called when this node is active</span>
+<span class="sd">        in a setup chain, for example during self.setup().</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">_setupstate</span><span class="o">.</span><span class="n">addfinalizer</span><span class="p">(</span><span class="n">fin</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Node.getparent"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Node.getparent">[docs]</a>    <span class="k">def</span> <span class="nf">getparent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; get the next parent node (including ourself)</span>
+<span class="sd">        which is an instance of the given class&quot;&quot;&quot;</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="bp">self</span>
+        <span class="k">while</span> <span class="n">current</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+            <span class="n">current</span> <span class="o">=</span> <span class="n">current</span><span class="o">.</span><span class="n">parent</span>
+        <span class="k">return</span> <span class="n">current</span></div>
+
+    <span class="k">def</span> <span class="nf">_prunetraceback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">_repr_failure_py</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">errisinstance</span><span class="p">(</span><span class="n">fail</span><span class="o">.</span><span class="n">Exception</span><span class="p">):</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">pytrace</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">(</span><span class="n">excinfo</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">fm</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">_fixturemanager</span>
+        <span class="k">if</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">errisinstance</span><span class="p">(</span><span class="n">fm</span><span class="o">.</span><span class="n">FixtureLookupError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">value</span><span class="o">.</span><span class="n">formatrepr</span><span class="p">()</span>
+        <span class="n">tbfilter</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">fulltrace</span><span class="p">:</span>
+            <span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">tb</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Traceback</span><span class="p">([</span><span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_prunetraceback</span><span class="p">(</span><span class="n">excinfo</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span> <span class="o">=</span> <span class="n">tb</span>
+            <span class="n">tbfilter</span> <span class="o">=</span> <span class="kc">False</span>  <span class="c1"># prunetraceback already does it</span>
+            <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;auto&quot;</span><span class="p">:</span>
+                <span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+        <span class="c1"># XXX should excinfo.getrepr record all data and toterminal() process it?</span>
+        <span class="k">if</span> <span class="n">style</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">tbstyle</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
+                <span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;short&quot;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;long&quot;</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">truncate_locals</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">truncate_locals</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">()</span>
+            <span class="n">abspath</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="n">abspath</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">return</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">getrepr</span><span class="p">(</span>
+            <span class="n">funcargs</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">abspath</span><span class="o">=</span><span class="n">abspath</span><span class="p">,</span>
+            <span class="n">showlocals</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">showlocals</span><span class="p">,</span>
+            <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">,</span>
+            <span class="n">tbfilter</span><span class="o">=</span><span class="n">tbfilter</span><span class="p">,</span>
+            <span class="n">truncate_locals</span><span class="o">=</span><span class="n">truncate_locals</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">repr_failure</span> <span class="o">=</span> <span class="n">_repr_failure_py</span></div>
+
+
+<span class="k">def</span> <span class="nf">get_fslocation_from_item</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Tries to extract the actual location from an item, depending on available attributes:</span>
+
+<span class="sd">    * &quot;fslocation&quot;: a pair (path, lineno)</span>
+<span class="sd">    * &quot;obj&quot;: a Python object that the item wraps.</span>
+<span class="sd">    * &quot;fspath&quot;: just a path</span>
+
+<span class="sd">    :rtype: a tuple of (str|LocalPath, int) with filename and line number.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;location&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">result</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;obj&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">obj</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">getfslineno</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+    <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;fspath&quot;</span><span class="p">,</span> <span class="s2">&quot;unknown location&quot;</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span>
+
+
+<div class="viewcode-block" id="Collector"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Collector">[docs]</a><span class="k">class</span> <span class="nc">Collector</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Collector instances create children through collect()</span>
+<span class="sd">        and thus iteratively build a tree.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Collector.CollectError"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Collector.CollectError">[docs]</a>    <span class="k">class</span> <span class="nc">CollectError</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; an error during collection, contains a custom message. &quot;&quot;&quot;</span></div>
+
+<div class="viewcode-block" id="Collector.collect"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Collector.collect">[docs]</a>    <span class="k">def</span> <span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; returns a list of children (items and collectors)</span>
+<span class="sd">            for this collection node.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;abstract&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Collector.repr_failure"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Collector.repr_failure">[docs]</a>    <span class="k">def</span> <span class="nf">repr_failure</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; represent a collection failure. &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">errisinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">CollectError</span><span class="p">):</span>
+            <span class="n">exc</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">value</span>
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">exc</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_repr_failure_py</span><span class="p">(</span><span class="n">excinfo</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s2">&quot;short&quot;</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_prunetraceback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;fspath&quot;</span><span class="p">):</span>
+            <span class="n">traceback</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span>
+            <span class="n">ntraceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fspath</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">ntraceback</span> <span class="o">==</span> <span class="n">traceback</span><span class="p">:</span>
+                <span class="n">ntraceback</span> <span class="o">=</span> <span class="n">ntraceback</span><span class="o">.</span><span class="n">cut</span><span class="p">(</span><span class="n">excludepath</span><span class="o">=</span><span class="n">tracebackcutdir</span><span class="p">)</span>
+            <span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span> <span class="o">=</span> <span class="n">ntraceback</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span></div>
+
+
+<span class="k">def</span> <span class="nf">_check_initialpaths_for_relpath</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">fspath</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">initial_path</span> <span class="ow">in</span> <span class="n">session</span><span class="o">.</span><span class="n">_initialpaths</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fspath</span><span class="o">.</span><span class="n">common</span><span class="p">(</span><span class="n">initial_path</span><span class="p">)</span> <span class="o">==</span> <span class="n">initial_path</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">fspath</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">initial_path</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="FSCollector"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.FSCollector">[docs]</a><span class="k">class</span> <span class="nc">FSCollector</span><span class="p">(</span><span class="n">Collector</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fspath</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">fspath</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">fspath</span><span class="p">)</span>  <span class="c1"># xxx only for test_resultlog.py?</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">fspath</span><span class="o">.</span><span class="n">basename</span>
+        <span class="k">if</span> <span class="n">parent</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">rel</span> <span class="o">=</span> <span class="n">fspath</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">parent</span><span class="o">.</span><span class="n">fspath</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">rel</span><span class="p">:</span>
+                <span class="n">name</span> <span class="o">=</span> <span class="n">rel</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">name</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="n">SEP</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fspath</span> <span class="o">=</span> <span class="n">fspath</span>
+
+        <span class="n">session</span> <span class="o">=</span> <span class="n">session</span> <span class="ow">or</span> <span class="n">parent</span><span class="o">.</span><span class="n">session</span>
+
+        <span class="k">if</span> <span class="n">nodeid</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">nodeid</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fspath</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">session</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">rootdir</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">nodeid</span><span class="p">:</span>
+                <span class="n">nodeid</span> <span class="o">=</span> <span class="n">_check_initialpaths_for_relpath</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">fspath</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">nodeid</span> <span class="ow">and</span> <span class="n">os</span><span class="o">.</span><span class="n">sep</span> <span class="o">!=</span> <span class="n">SEP</span><span class="p">:</span>
+                <span class="n">nodeid</span> <span class="o">=</span> <span class="n">nodeid</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">sep</span><span class="p">,</span> <span class="n">SEP</span><span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">(</span><span class="n">FSCollector</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="n">nodeid</span><span class="p">,</span> <span class="n">fspath</span><span class="o">=</span><span class="n">fspath</span>
+        <span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">File</span><span class="p">(</span><span class="n">FSCollector</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; base class for collecting tests from a file. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Item"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Item">[docs]</a><span class="k">class</span> <span class="nc">Item</span><span class="p">(</span><span class="n">Node</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; a basic test invocation item. Note that for a single function</span>
+<span class="sd">    there might be multiple test invocation items.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">nextitem</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">session</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">Item</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">parent</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">session</span><span class="p">,</span> <span class="n">nodeid</span><span class="o">=</span><span class="n">nodeid</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_report_sections</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1">#: user properties is a list of tuples (name, value) that holds user</span>
+        <span class="c1">#: defined properties for this test.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">user_properties</span> <span class="o">=</span> <span class="p">[]</span>
+
+<div class="viewcode-block" id="Item.add_report_section"><a class="viewcode-back" href="../../reference.html#_pytest.nodes.Item.add_report_section">[docs]</a>    <span class="k">def</span> <span class="nf">add_report_section</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">when</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">content</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a new report section, similar to what&#39;s done internally to add stdout and</span>
+<span class="sd">        stderr captured output::</span>
+
+<span class="sd">            item.add_report_section(&quot;call&quot;, &quot;stdout&quot;, &quot;report section contents&quot;)</span>
+
+<span class="sd">        :param str when:</span>
+<span class="sd">            One of the possible capture states, ``&quot;setup&quot;``, ``&quot;call&quot;``, ``&quot;teardown&quot;``.</span>
+<span class="sd">        :param str key:</span>
+<span class="sd">            Name of the section, can be customized at will. Pytest uses ``&quot;stdout&quot;`` and</span>
+<span class="sd">            ``&quot;stderr&quot;`` internally.</span>
+
+<span class="sd">        :param str content:</span>
+<span class="sd">            The full contents as a string.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">content</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_report_sections</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">when</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">content</span><span class="p">))</span></div>
+
+    <span class="k">def</span> <span class="nf">reportinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">fspath</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">location</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_location</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reportinfo</span><span class="p">()</span>
+            <span class="c1"># bestrelpath is a quite slow function</span>
+            <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s2">&quot;_bestrelpathcache&quot;</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">fspath</span> <span class="o">=</span> <span class="n">cache</span><span class="p">[</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="n">fspath</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">fspath</span><span class="o">.</span><span class="n">bestrelpath</span><span class="p">(</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+                <span class="n">cache</span><span class="p">[</span><span class="n">location</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span> <span class="o">=</span> <span class="n">fspath</span>
+            <span class="n">location</span> <span class="o">=</span> <span class="p">(</span><span class="n">fspath</span><span class="p">,</span> <span class="n">location</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="nb">str</span><span class="p">(</span><span class="n">location</span><span class="p">[</span><span class="mi">2</span><span class="p">]))</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_location</span> <span class="o">=</span> <span class="n">location</span>
+            <span class="k">return</span> <span class="n">location</span></div>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

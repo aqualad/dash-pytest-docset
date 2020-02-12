@@ -1,0 +1,54 @@
+environment:
+  matrix:
+  - TOXENV: "py27"
+  - TOXENV: "py37"
+    PYTEST_NO_COVERAGE: "1"
+  - TOXENV: "linting,docs,doctesting"
+  - TOXENV: "py36"
+  - TOXENV: "py35"
+  - TOXENV: "py34"
+  - TOXENV: "pypy"
+    PYTEST_NO_COVERAGE: "1"
+  # Specialized factors for py27.
+  - TOXENV: "py27-trial,py27-numpy,py27-nobyte"
+  - TOXENV: "py27-pluggymaster"
+    PYTEST_NO_COVERAGE: "1"
+  - TOXENV: "py27-xdist"
+  # Specialized factors for py36.
+  - TOXENV: "py36-trial,py36-numpy"
+  - TOXENV: "py36-pluggymaster"
+    PYTEST_NO_COVERAGE: "1"
+  - TOXENV: "py36-freeze"
+    PYTEST_NO_COVERAGE: "1"
+  - TOXENV: "py36-xdist"
+
+matrix:
+  fast_finish: true
+
+install:
+  - echo Installed Pythons
+  - dir c:\Python*
+
+  - if "%TOXENV%" == "pypy" call scripts\install-pypy.bat
+
+  - C:\Python36\python -m pip install --upgrade pip
+  - C:\Python36\python -m pip install --upgrade --pre tox
+
+build: false  # Not a C# project, build stuff at the test step instead.
+
+before_test:
+  - call scripts\prepare-coverage.bat
+
+test_script:
+  - C:\Python36\python -m tox
+
+on_success:
+  - call scripts\upload-coverage.bat
+
+cache:
+  - '%LOCALAPPDATA%\pip\cache'
+  - '%USERPROFILE%\.cache\pre-commit'
+
+# We don't deploy anything on tags with AppVeyor, we use Travis instead, so we
+# might as well save resources
+skip_tags: true

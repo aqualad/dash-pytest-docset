@@ -1,0 +1,181 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Flaky tests &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="pytest import mechanisms and sys.path/PYTHONPATH" href="pythonpath.html" />
+    <link rel="prev" title="Good Integration Practices" href="goodpractices.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="pythonpath.html" title="pytest import mechanisms and sys.path/PYTHONPATH"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="goodpractices.html" title="Good Integration Practices"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="flaky-tests">
+<h1>Flaky tests<a class="headerlink" href="#flaky-tests" title="Permalink to this headline">¶</a></h1>
+<p>A “flaky” test is one that exhibits intermittent or sporadic failure, that seems to have non-deterministic behaviour. Sometimes it passes, sometimes it fails, and it’s not clear why. This page discusses pytest features that can help and other general strategies for identifying, fixing or mitigating them.</p>
+<div class="section" id="why-flaky-tests-are-a-problem">
+<h2>Why flaky tests are a problem<a class="headerlink" href="#why-flaky-tests-are-a-problem" title="Permalink to this headline">¶</a></h2>
+<p>Flaky tests are particularly troublesome when a continuous integration (CI) server is being used, so that all tests must pass before a new code change can be merged. If the test result is not a reliable signal – that a test failure means the code change broke the test – developers can become mistrustful of the test results, which can lead to overlooking genuine failures. It is also a source of wasted time as developers must re-run test suites and investigate spurious failures.</p>
+</div>
+<div class="section" id="potential-root-causes">
+<h2>Potential root causes<a class="headerlink" href="#potential-root-causes" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="system-state">
+<h3>System state<a class="headerlink" href="#system-state" title="Permalink to this headline">¶</a></h3>
+<p>Broadly speaking, a flaky test indicates that the test relies on some system state that is not being appropriately controlled - the test environment is not sufficiently isolated. Higher level tests are more likely to be flaky as they rely on more state.</p>
+<p>Flaky tests sometimes appear when a test suite is run in parallel (such as use of pytest-xdist). This can indicate a test is reliant on test ordering.</p>
+<ul class="simple">
+<li>Perhaps a different test is failing to clean up after itself and leaving behind data which causes the flaky test to fail.</li>
+<li>The flaky test is reliant on data from a previous test that doesn’t clean up after itself, and in parallel runs that previous test is not always present</li>
+<li>Tests that modify global state typically cannot be run in parallel.</li>
+</ul>
+</div>
+<div class="section" id="overly-strict-assertion">
+<h3>Overly strict assertion<a class="headerlink" href="#overly-strict-assertion" title="Permalink to this headline">¶</a></h3>
+<p>Overly strict assertions can cause problems with floating point comparison as well as timing issues. <a class="reference external" href="https://docs.pytest.org/en/latest/reference.html#pytest-approx">pytest.approx</a> is useful here.</p>
+</div>
+</div>
+<div class="section" id="pytest-features">
+<h2>Pytest features<a class="headerlink" href="#pytest-features" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="xfail-strict">
+<h3>Xfail strict<a class="headerlink" href="#xfail-strict" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="reference.html#pytest-mark-xfail-ref"><span class="std std-ref">pytest.mark.xfail</span></a> with <code class="docutils literal notranslate"><span class="pre">strict=False</span></code> can be used to mark a test so that its failure does not cause the whole build to break. This could be considered like a manual quarantine, and is rather dangerous to use permanently.</p>
+</div>
+<div class="section" id="pytest-current-test">
+<h3>PYTEST_CURRENT_TEST<a class="headerlink" href="#pytest-current-test" title="Permalink to this headline">¶</a></h3>
+<p><a class="reference internal" href="example/simple.html#pytest-current-test-env"><span class="std std-ref">PYTEST_CURRENT_TEST environment variable</span></a> may be useful for figuring out “which test got stuck”.</p>
+</div>
+<div class="section" id="plugins">
+<h3>Plugins<a class="headerlink" href="#plugins" title="Permalink to this headline">¶</a></h3>
+<p>Rerunning any failed tests can mitigate the negative effects of flaky tests by giving them additional chances to pass, so that the overall build does not fail. Several pytest plugins support this:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/box/flaky">flaky</a></li>
+<li><a class="reference external" href="https://github.com/dropbox/pytest-flakefinder">pytest-flakefinder</a> - <a class="reference external" href="https://blogs.dropbox.com/tech/2016/03/open-sourcing-pytest-tools/">blog post</a></li>
+<li><a class="reference external" href="https://github.com/pytest-dev/pytest-rerunfailures">pytest-rerunfailures</a></li>
+<li><a class="reference external" href="https://github.com/ESSS/pytest-replay">pytest-replay</a>: This plugin helps to reproduce locally crashes or flaky tests observed during CI runs.</li>
+</ul>
+<p>Plugins to deliberately randomize tests can help expose tests with state problems:</p>
+<ul class="simple">
+<li><a class="reference external" href="https://github.com/jbasko/pytest-random-order">pytest-random-order</a></li>
+<li><a class="reference external" href="https://github.com/pytest-dev/pytest-randomly">pytest-randomly</a></li>
+</ul>
+</div>
+</div>
+<div class="section" id="other-general-strategies">
+<h2>Other general strategies<a class="headerlink" href="#other-general-strategies" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="split-up-test-suites">
+<h3>Split up test suites<a class="headerlink" href="#split-up-test-suites" title="Permalink to this headline">¶</a></h3>
+<p>It can be common to split a single test suite into two, such as unit vs integration, and only use the unit test suite as a CI gate. This also helps keep build times manageable as high level tests tend to be slower. However, it means it does become possible for code that breaks the build to be merged, so extra vigilance is needed for monitoring the integration test results.</p>
+</div>
+<div class="section" id="video-screenshot-on-failure">
+<h3>Video/screenshot on failure<a class="headerlink" href="#video-screenshot-on-failure" title="Permalink to this headline">¶</a></h3>
+<p>For UI tests these are important for understanding what the state of the UI was when the test failed. pytest-splinter can be used with plugins like pytest-bdd and can <a class="reference external" href="https://pytest-splinter.readthedocs.io/en/latest/#automatic-screenshots-on-test-failure">save a screenshot on test failure</a>, which can help to isolate the cause.</p>
+</div>
+<div class="section" id="delete-or-rewrite-the-test">
+<h3>Delete or rewrite the test<a class="headerlink" href="#delete-or-rewrite-the-test" title="Permalink to this headline">¶</a></h3>
+<p>If the functionality is covered by other tests, perhaps the test can be removed. If not, perhaps it can be rewritten at a lower level which will remove the flakiness or make its source more apparent.</p>
+</div>
+<div class="section" id="quarantine">
+<h3>Quarantine<a class="headerlink" href="#quarantine" title="Permalink to this headline">¶</a></h3>
+<p>Mark Lapierre discusses the <a class="reference external" href="https://dev.to/mlapierre/pros-and-cons-of-quarantined-tests-2emj">Pros and Cons of Quarantined Tests</a> in a post from 2018.</p>
+</div>
+<div class="section" id="ci-tools-that-rerun-on-failure">
+<h3>CI tools that rerun on failure<a class="headerlink" href="#ci-tools-that-rerun-on-failure" title="Permalink to this headline">¶</a></h3>
+<p>Azure Pipelines (the Azure cloud CI/CD tool, formerly Visual Studio Team Services or VSTS) has a feature to <a class="reference external" href="https://docs.microsoft.com/en-us/azure/devops/release-notes/2017/dec-11-vsts#identify-flaky-tests">identify flaky tests</a> and rerun failed tests.</p>
+</div>
+</div>
+<div class="section" id="research">
+<h2>Research<a class="headerlink" href="#research" title="Permalink to this headline">¶</a></h2>
+<p>This is a limited list, please submit an issue or pull request to expand it!</p>
+<ul class="simple">
+<li>Gao, Zebao, Yalan Liang, Myra B. Cohen, Atif M. Memon, and Zhen Wang. “Making system user interactive tests repeatable: When and what should we control?.” In <em>Software Engineering (ICSE), 2015 IEEE/ACM 37th IEEE International Conference on</em>, vol. 1, pp. 55-65. IEEE, 2015.  <a class="reference external" href="http://www.cs.umd.edu/~atif/pubs/gao-icse15.pdf">PDF</a></li>
+<li>Palomba, Fabio, and Andy Zaidman. “Does refactoring of test smells induce fixing flaky tests?.” In <em>Software Maintenance and Evolution (ICSME), 2017 IEEE International Conference on</em>, pp. 1-12. IEEE, 2017. <a class="reference external" href="https://drive.google.com/file/d/10HdcCQiuQVgW3yYUJD-TSTq1NbYEprl0/view">PDF in Google Drive</a></li>
+<li>Bell, Jonathan, Owolabi Legunsen, Michael Hilton, Lamyaa Eloussi, Tifany Yung, and Darko Marinov. “DeFlaker: Automatically detecting flaky tests.” In <em>Proceedings of the 2018 International Conference on Software Engineering</em>. 2018. <a class="reference external" href="https://www.jonbell.net/icse18-deflaker.pdf">PDF</a></li>
+</ul>
+</div>
+<div class="section" id="resources">
+<h2>Resources<a class="headerlink" href="#resources" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="https://martinfowler.com/articles/nonDeterminism.html">Eradicating Non-Determinism in Tests</a> by Martin Fowler, 2011</li>
+<li><a class="reference external" href="https://www.thoughtworks.com/insights/blog/no-more-flaky-tests-go-team">No more flaky tests on the Go team</a> by Pavan Sudarshan, 2012</li>
+<li><a class="reference external" href="https://www.youtube.com/embed/VotJqV4n8ig">The Build That Cried Broken: Building Trust in your Continuous Integration Tests</a> talk (video) by <a class="reference external" href="http://angiejones.tech/">Angie Jones</a> at SeleniumConf Austin 2017</li>
+<li><a class="reference external" href="https://testandcode.com/50">Test and Code Podcast: Flaky Tests and How to Deal with Them</a> by Brian Okken and Anthony Shaw, 2018</li>
+<li>Microsoft:<ul>
+<li><a class="reference external" href="https://blogs.msdn.microsoft.com/bharry/2017/06/28/testing-in-a-cloud-delivery-cadence/">How we approach testing VSTS to enable continuous delivery</a> by Brian Harry MS, 2017</li>
+<li><a class="reference external" href="https://docs.microsoft.com/en-us/azure/devops/learn/devops-at-microsoft/eliminating-flaky-tests">Eliminating Flaky Tests</a> blog and talk (video) by Munil Shah, 2017</li>
+</ul>
+</li>
+<li>Google:<ul>
+<li><a class="reference external" href="https://testing.googleblog.com/2016/05/flaky-tests-at-google-and-how-we.html">Flaky Tests at Google and How We Mitigate Them</a> by John Micco, 2016</li>
+<li><a class="reference external" href="https://docs.google.com/document/d/1mZ0-Kc97DI_F3tf_GBW_NB_aqka-P1jVOsFfufxqUUM/edit#heading=h.ec0r4fypsleh">Where do Google’s flaky tests come from?</a>  by Jeff Listfield, 2017</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="pythonpath.html" title="pytest import mechanisms and sys.path/PYTHONPATH"
+             >next</a></li>
+        <li class="right" >
+          <a href="goodpractices.html" title="Good Integration Practices"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

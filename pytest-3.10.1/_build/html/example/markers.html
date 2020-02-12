@@ -1,0 +1,670 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Working with custom markers &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="A session-fixture which can look at all collected tests" href="special.html" />
+    <link rel="prev" title="Parametrizing tests" href="parametrize.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="special.html" title="A session-fixture which can look at all collected tests"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="parametrize.html" title="Parametrizing tests"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="working-with-custom-markers">
+<span id="mark-examples"></span><h1>Working with custom markers<a class="headerlink" href="#working-with-custom-markers" title="Permalink to this headline">¶</a></h1>
+<p>Here are some example using the <a class="reference internal" href="../mark.html#mark"><span class="std std-ref">Marking test functions with attributes</span></a> mechanism.</p>
+<div class="section" id="marking-test-functions-and-selecting-them-for-a-run">
+<h2>Marking test functions and selecting them for a run<a class="headerlink" href="#marking-test-functions-and-selecting-them-for-a-run" title="Permalink to this headline">¶</a></h2>
+<p>You can “mark” a test function with custom metadata like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_server.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">webtest</span>
+<span class="k">def</span> <span class="nf">test_send_http</span><span class="p">():</span>
+    <span class="k">pass</span> <span class="c1"># perform some webtest test for your app</span>
+<span class="k">def</span> <span class="nf">test_something_quick</span><span class="p">():</span>
+    <span class="k">pass</span>
+<span class="k">def</span> <span class="nf">test_another</span><span class="p">():</span>
+    <span class="k">pass</span>
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">test_method</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.2.</span></p>
+</div>
+<p>You can then restrict a test run to only run tests marked with <code class="docutils literal notranslate"><span class="pre">webtest</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v -m webtest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 4 items / 3 deselected
+
+test_server.py::test_send_http PASSED                                [100%]
+
+================== 1 passed, 3 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>Or the inverse, running all tests except the webtest ones:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v -m &quot;not webtest&quot;
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 4 items / 1 deselected
+
+test_server.py::test_something_quick PASSED                          [ 33%]
+test_server.py::test_another PASSED                                  [ 66%]
+test_server.py::TestClass::test_method PASSED                        [100%]
+
+================== 3 passed, 1 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+</div>
+<div class="section" id="selecting-tests-based-on-their-node-id">
+<h2>Selecting tests based on their node ID<a class="headerlink" href="#selecting-tests-based-on-their-node-id" title="Permalink to this headline">¶</a></h2>
+<p>You can provide one or more <a class="reference internal" href="#node-id"><span class="std std-ref">node IDs</span></a> as positional
+arguments to select only specified tests. This makes it easy to select
+tests based on their module, class, method, or function name:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v test_server.py::TestClass::test_method
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 1 item
+
+test_server.py::TestClass::test_method PASSED                        [100%]
+
+========================= 1 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>You can also select on the class:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v test_server.py::TestClass
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 1 item
+
+test_server.py::TestClass::test_method PASSED                        [100%]
+
+========================= 1 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>Or select multiple nodes:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v test_server.py::TestClass test_server.py::test_send_http
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 2 items
+
+test_server.py::TestClass::test_method PASSED                        [ 50%]
+test_server.py::test_send_http PASSED                                [100%]
+
+========================= 2 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+<div class="admonition note" id="node-id">
+<p class="first admonition-title">Note</p>
+<p>Node IDs are of the form <code class="docutils literal notranslate"><span class="pre">module.py::class::method</span></code> or
+<code class="docutils literal notranslate"><span class="pre">module.py::function</span></code>.  Node IDs control which tests are
+collected, so <code class="docutils literal notranslate"><span class="pre">module.py::class</span></code> will select all test methods
+on the class.  Nodes are also created for each parameter of a
+parametrized fixture or test, so selecting a parametrized test
+must include the parameter value, e.g.
+<code class="docutils literal notranslate"><span class="pre">module.py::function[param]</span></code>.</p>
+<p class="last">Node IDs for failing tests are displayed in the test summary info
+when running pytest with the <code class="docutils literal notranslate"><span class="pre">-rf</span></code> option.  You can also
+construct Node IDs from the output of <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--collectonly</span></code>.</p>
+</div>
+</div>
+<div class="section" id="using-k-expr-to-select-tests-based-on-their-name">
+<h2>Using <code class="docutils literal notranslate"><span class="pre">-k</span> <span class="pre">expr</span></code> to select tests based on their name<a class="headerlink" href="#using-k-expr-to-select-tests-based-on-their-name" title="Permalink to this headline">¶</a></h2>
+<p>You can use the <code class="docutils literal notranslate"><span class="pre">-k</span></code> command line option to specify an expression
+which implements a substring match on the test names instead of the
+exact match on markers that <code class="docutils literal notranslate"><span class="pre">-m</span></code> provides.  This makes it easy to
+select tests based on their names:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v -k http  # running with the above defined example module
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 4 items / 3 deselected
+
+test_server.py::test_send_http PASSED                                [100%]
+
+================== 1 passed, 3 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>And you can also run all tests except the ones that match the keyword:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -k &quot;not send_http&quot; -v
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 4 items / 1 deselected
+
+test_server.py::test_something_quick PASSED                          [ 33%]
+test_server.py::test_another PASSED                                  [ 66%]
+test_server.py::TestClass::test_method PASSED                        [100%]
+
+================== 3 passed, 1 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>Or to select “http” and “quick” tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -k &quot;http or quick&quot; -v
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 4 items / 2 deselected
+
+test_server.py::test_send_http PASSED                                [ 50%]
+test_server.py::test_something_quick PASSED                          [100%]
+
+================== 2 passed, 2 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If you are using expressions such as <code class="docutils literal notranslate"><span class="pre">&quot;X</span> <span class="pre">and</span> <span class="pre">Y&quot;</span></code> then both <code class="docutils literal notranslate"><span class="pre">X</span></code> and <code class="docutils literal notranslate"><span class="pre">Y</span></code>
+need to be simple non-keyword names. For example, <code class="docutils literal notranslate"><span class="pre">&quot;pass&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;from&quot;</span></code>
+will result in SyntaxErrors because <code class="docutils literal notranslate"><span class="pre">&quot;-k&quot;</span></code> evaluates the expression using
+Python’s <a class="reference external" href="https://docs.python.org/3.6/library/functions.html#eval">eval</a> function.</p>
+</div>
+<blockquote>
+<div>However, if the <code class="docutils literal notranslate"><span class="pre">&quot;-k&quot;</span></code> argument is a simple string, no such restrictions
+apply. Also <code class="docutils literal notranslate"><span class="pre">&quot;-k</span> <span class="pre">'not</span> <span class="pre">STRING'&quot;</span></code> has no restrictions.  You can also
+specify numbers like <code class="docutils literal notranslate"><span class="pre">&quot;-k</span> <span class="pre">1.3&quot;</span></code> to match tests which are parametrized
+with the float <code class="docutils literal notranslate"><span class="pre">&quot;1.3&quot;</span></code>.</div></blockquote>
+</div>
+<div class="section" id="registering-markers">
+<h2>Registering markers<a class="headerlink" href="#registering-markers" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.2.</span></p>
+</div>
+<p>Registering markers for your test suite is simple:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of pytest.ini</span>
+<span class="p">[</span><span class="n">pytest</span><span class="p">]</span>
+<span class="n">markers</span> <span class="o">=</span>
+    <span class="n">webtest</span><span class="p">:</span> <span class="n">mark</span> <span class="n">a</span> <span class="n">test</span> <span class="k">as</span> <span class="n">a</span> <span class="n">webtest</span><span class="o">.</span>
+</pre></div>
+</div>
+<p>You can ask which markers exist for your test suite - the list includes our just defined <code class="docutils literal notranslate"><span class="pre">webtest</span></code> markers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --markers
+@pytest.mark.webtest: mark a test as a webtest.
+
+@pytest.mark.filterwarnings(warning): add a warning filter to the given test. see https://docs.pytest.org/en/latest/warnings.html#pytest-mark-filterwarnings
+
+@pytest.mark.skip(reason=None): skip the given test function with an optional reason. Example: skip(reason=&quot;no way of currently testing this&quot;) skips the test.
+
+@pytest.mark.skipif(condition): skip the given test function if eval(condition) results in a True value.  Evaluation happens within the module global context. Example: skipif(&#39;sys.platform == &quot;win32&quot;&#39;) skips the test if we are on the win32 platform. see https://docs.pytest.org/en/latest/skipping.html
+
+@pytest.mark.xfail(condition, reason=None, run=True, raises=None, strict=False): mark the test function as an expected failure if eval(condition) has a True value. Optionally specify a reason for better reporting and run=False if you don&#39;t even want to execute the test function. If only specific exception(s) are expected, you can list them in raises, and if the test fails in other ways, it will be reported as a true failure. See https://docs.pytest.org/en/latest/skipping.html
+
+@pytest.mark.parametrize(argnames, argvalues): call a test function multiple times passing in different arguments in turn. argvalues generally needs to be a list of values if argnames specifies only one name or a list of tuples of values if argnames specifies multiple names. Example: @parametrize(&#39;arg1&#39;, [1,2]) would lead to two calls of the decorated test function, one with arg1=1 and another with arg1=2.see https://docs.pytest.org/en/latest/parametrize.html for more info and examples.
+
+@pytest.mark.usefixtures(fixturename1, fixturename2, ...): mark tests as needing all of the specified fixtures. see https://docs.pytest.org/en/latest/fixture.html#usefixtures
+
+@pytest.mark.tryfirst: mark a hook implementation function such that the plugin machinery will try to call it first/as early as possible.
+
+@pytest.mark.trylast: mark a hook implementation function such that the plugin machinery will try to call it last/as late as possible.
+</pre></div>
+</div>
+<p>For an example on how to add and work with markers from a plugin, see
+<a class="reference internal" href="#adding-a-custom-marker-from-a-plugin"><span class="std std-ref">Custom marker and command line option to control test runs</span></a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p>It is recommended to explicitly register markers so that:</p>
+<ul class="last simple">
+<li>There is one place in your test suite defining your markers</li>
+<li>Asking for existing markers via <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">--markers</span></code> gives good output</li>
+<li>Typos in function markers are treated as an error if you use
+the <code class="docutils literal notranslate"><span class="pre">--strict</span></code> option.</li>
+</ul>
+</div>
+</div>
+<div class="section" id="marking-whole-classes-or-modules">
+<span id="scoped-marking"></span><h2>Marking whole classes or modules<a class="headerlink" href="#marking-whole-classes-or-modules" title="Permalink to this headline">¶</a></h2>
+<p>You may use <code class="docutils literal notranslate"><span class="pre">pytest.mark</span></code> decorators with classes to apply markers to all of
+its test methods:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_mark_classlevel.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">webtest</span>
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">test_startup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+    <span class="k">def</span> <span class="nf">test_startup_and_more</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>This is equivalent to directly applying the decorator to the
+two test functions.</p>
+<p>To remain backward-compatible with Python 2.4 you can also set a
+<code class="docutils literal notranslate"><span class="pre">pytestmark</span></code> attribute on a TestClass like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">pytestmark</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">webtest</span>
+</pre></div>
+</div>
+<p>or if you need to use multiple markers you can use a list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">pytestmark</span> <span class="o">=</span> <span class="p">[</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">webtest</span><span class="p">,</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">slowtest</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>You can also set a module level marker:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="n">pytestmark</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">webtest</span>
+</pre></div>
+</div>
+<p>in which case it will be applied to all functions and
+methods defined in the module.</p>
+</div>
+<div class="section" id="marking-individual-tests-when-using-parametrize">
+<span id="id1"></span><h2>Marking individual tests when using parametrize<a class="headerlink" href="#marking-individual-tests-when-using-parametrize" title="Permalink to this headline">¶</a></h2>
+<p>When using parametrize, applying a mark will make it apply
+to each individual test. However it is also possible to
+apply a marker to an individual test instance:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">foo</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">((</span><span class="s2">&quot;n&quot;</span><span class="p">,</span> <span class="s2">&quot;expected&quot;</span><span class="p">),</span> <span class="p">[</span>
+    <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">bar</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)),</span>
+    <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+<span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_increment</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+     <span class="k">assert</span> <span class="n">n</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>In this example the mark “foo” will apply to each of the three
+tests, whereas the “bar” mark is only applied to the second test.
+Skip and xfail marks can also be applied in this way, see <a class="reference internal" href="../skipping.html#skip-xfail-with-parametrize"><span class="std std-ref">Skip/xfail with parametrize</span></a>.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">If the data you are parametrizing happen to be single callables, you need to be careful
+when marking these items. <code class="docutils literal notranslate"><span class="pre">pytest.mark.xfail(my_func)</span></code> won’t work because it’s also the
+signature of a function being decorated. To resolve this ambiguity, you need to pass a
+reason argument:
+<code class="docutils literal notranslate"><span class="pre">pytest.mark.xfail(func_bar,</span> <span class="pre">reason=&quot;Issue#7&quot;)</span></code>.</p>
+</div>
+</div>
+<div class="section" id="custom-marker-and-command-line-option-to-control-test-runs">
+<span id="adding-a-custom-marker-from-a-plugin"></span><h2>Custom marker and command line option to control test runs<a class="headerlink" href="#custom-marker-and-command-line-option-to-control-test-runs" title="Permalink to this headline">¶</a></h2>
+<p>Plugins can provide custom markers and implement specific behaviour
+based on it. This is a self-contained example which adds a command
+line option and a parametrized test function marker to run tests
+specifies via named environments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span><span class="s2">&quot;-E&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;NAME&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;only run tests matching the environment NAME.&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="c1"># register an additional marker</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">addinivalue_line</span><span class="p">(</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;env(name): mark test to run only on named environment&quot;</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="n">envnames</span> <span class="o">=</span> <span class="p">[</span><span class="n">mark</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">mark</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;env&#39;</span><span class="p">)]</span>
+    <span class="k">if</span> <span class="n">envnames</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">item</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">getoption</span><span class="p">(</span><span class="s2">&quot;-E&quot;</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">envnames</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;test requires env in </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">envnames</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>A test file using this local plugin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_someenv.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">env</span><span class="p">(</span><span class="s2">&quot;stage1&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_basic_db_operation</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>and an example invocations specifying a different environment than what
+the test needs:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -E stage2
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+
+test_someenv.py s                                                    [100%]
+
+======================== 1 skipped in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>and here is one that specifies exactly the environment needed:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -E stage1
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+
+test_someenv.py .                                                    [100%]
+
+========================= 1 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--markers</span></code> option always gives you a list of available markers:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --markers
+@pytest.mark.env(name): mark test to run only on named environment
+
+@pytest.mark.filterwarnings(warning): add a warning filter to the given test. see https://docs.pytest.org/en/latest/warnings.html#pytest-mark-filterwarnings
+
+@pytest.mark.skip(reason=None): skip the given test function with an optional reason. Example: skip(reason=&quot;no way of currently testing this&quot;) skips the test.
+
+@pytest.mark.skipif(condition): skip the given test function if eval(condition) results in a True value.  Evaluation happens within the module global context. Example: skipif(&#39;sys.platform == &quot;win32&quot;&#39;) skips the test if we are on the win32 platform. see https://docs.pytest.org/en/latest/skipping.html
+
+@pytest.mark.xfail(condition, reason=None, run=True, raises=None, strict=False): mark the test function as an expected failure if eval(condition) has a True value. Optionally specify a reason for better reporting and run=False if you don&#39;t even want to execute the test function. If only specific exception(s) are expected, you can list them in raises, and if the test fails in other ways, it will be reported as a true failure. See https://docs.pytest.org/en/latest/skipping.html
+
+@pytest.mark.parametrize(argnames, argvalues): call a test function multiple times passing in different arguments in turn. argvalues generally needs to be a list of values if argnames specifies only one name or a list of tuples of values if argnames specifies multiple names. Example: @parametrize(&#39;arg1&#39;, [1,2]) would lead to two calls of the decorated test function, one with arg1=1 and another with arg1=2.see https://docs.pytest.org/en/latest/parametrize.html for more info and examples.
+
+@pytest.mark.usefixtures(fixturename1, fixturename2, ...): mark tests as needing all of the specified fixtures. see https://docs.pytest.org/en/latest/fixture.html#usefixtures
+
+@pytest.mark.tryfirst: mark a hook implementation function such that the plugin machinery will try to call it first/as early as possible.
+
+@pytest.mark.trylast: mark a hook implementation function such that the plugin machinery will try to call it last/as late as possible.
+</pre></div>
+</div>
+</div>
+<div class="section" id="passing-a-callable-to-custom-markers">
+<span id="passing-callables-to-custom-markers"></span><h2>Passing a callable to custom markers<a class="headerlink" href="#passing-a-callable-to-custom-markers" title="Permalink to this headline">¶</a></h2>
+<p>Below is the config file that will be used in the next examples:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;my_marker&#39;</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">marker</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>A custom marker can have its argument set, i.e. <code class="docutils literal notranslate"><span class="pre">args</span></code> and <code class="docutils literal notranslate"><span class="pre">kwargs</span></code> properties, defined by either invoking it as a callable or using <code class="docutils literal notranslate"><span class="pre">pytest.mark.MARKER_NAME.with_args</span></code>. These two methods achieve the same effect most of the time.</p>
+<p>However, if there is a callable as the single positional argument with no keyword arguments, using the <code class="docutils literal notranslate"><span class="pre">pytest.mark.MARKER_NAME(c)</span></code> will not pass <code class="docutils literal notranslate"><span class="pre">c</span></code> as a positional argument but decorate <code class="docutils literal notranslate"><span class="pre">c</span></code> with the custom marker (see <a class="reference internal" href="../mark.html#mark"><span class="std std-ref">MarkDecorator</span></a>). Fortunately, <code class="docutils literal notranslate"><span class="pre">pytest.mark.MARKER_NAME.with_args</span></code> comes to the rescue:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_custom_marker.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="k">def</span> <span class="nf">hello_world</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s1">&#39;Hello World&#39;</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">my_marker</span><span class="o">.</span><span class="n">with_args</span><span class="p">(</span><span class="n">hello_world</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_with_args</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>The output is as follows:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q -s
+Mark(name=&#39;my_marker&#39;, args=(&lt;function hello_world at 0xdeadbeef&gt;,), kwargs={})
+.
+1 passed in 0.12 seconds
+</pre></div>
+</div>
+<p>We can see that the custom marker has its argument set extended with the function <code class="docutils literal notranslate"><span class="pre">hello_world</span></code>. This is the key difference between creating a custom marker as a callable, which invokes <code class="docutils literal notranslate"><span class="pre">__call__</span></code> behind the scenes, and using <code class="docutils literal notranslate"><span class="pre">with_args</span></code>.</p>
+</div>
+<div class="section" id="reading-markers-which-were-set-from-multiple-places">
+<h2>Reading markers which were set from multiple places<a class="headerlink" href="#reading-markers-which-were-set-from-multiple-places" title="Permalink to this headline">¶</a></h2>
+<p>If you are heavily using markers in your test suite you may encounter the case where a marker is applied several times to a test function.  From plugin
+code you can read over all such settings.  Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_mark_three_times.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="n">pytestmark</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;module&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;class&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="k">class</span> <span class="nc">TestClass</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;function&quot;</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">test_something</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>Here we have the marker “glob” applied three times to the same
+test function.  From a conftest file we can read it like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">mark</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;glob&#39;</span><span class="p">):</span>
+        <span class="nb">print</span> <span class="p">(</span><span class="s2">&quot;glob args=</span><span class="si">%s</span><span class="s2"> kwargs=</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span><span class="p">(</span><span class="n">mark</span><span class="o">.</span><span class="n">args</span><span class="p">,</span> <span class="n">mark</span><span class="o">.</span><span class="n">kwargs</span><span class="p">))</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Let’s run this without capturing output and see what we get:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q -s
+glob args=(&#39;function&#39;,) kwargs={&#39;x&#39;: 3}
+glob args=(&#39;class&#39;,) kwargs={&#39;x&#39;: 2}
+glob args=(&#39;module&#39;,) kwargs={&#39;x&#39;: 1}
+.
+1 passed in 0.12 seconds
+</pre></div>
+</div>
+</div>
+<div class="section" id="marking-platform-specific-tests-with-pytest">
+<h2>marking platform specific tests with pytest<a class="headerlink" href="#marking-platform-specific-tests-with-pytest" title="Permalink to this headline">¶</a></h2>
+<p>Consider you have a test suite which marks tests for particular platforms,
+namely <code class="docutils literal notranslate"><span class="pre">pytest.mark.darwin</span></code>, <code class="docutils literal notranslate"><span class="pre">pytest.mark.win32</span></code> etc. and you
+also have tests that run on all platforms and have no specific
+marker.  If you now want to have a way to only run the tests
+for your particular platform, you could use the following plugin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="c1">#</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="n">ALL</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="s2">&quot;darwin linux win32&quot;</span><span class="o">.</span><span class="n">split</span><span class="p">())</span>
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="n">supported_platforms</span> <span class="o">=</span> <span class="n">ALL</span><span class="o">.</span><span class="n">intersection</span><span class="p">(</span><span class="n">mark</span><span class="o">.</span><span class="n">name</span> <span class="k">for</span> <span class="n">mark</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">())</span>
+    <span class="n">plat</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span>
+    <span class="k">if</span> <span class="n">supported_platforms</span> <span class="ow">and</span> <span class="n">plat</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">supported_platforms</span><span class="p">:</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="s2">&quot;cannot run on platform </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">plat</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>then tests will be skipped if they were specified for a different platform.
+Let’s do a little test file to show how this looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_plat.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">darwin</span>
+<span class="k">def</span> <span class="nf">test_if_apple_is_evil</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">linux</span>
+<span class="k">def</span> <span class="nf">test_if_linux_works</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">win32</span>
+<span class="k">def</span> <span class="nf">test_if_win32_crashes</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+<span class="k">def</span> <span class="nf">test_runs_everywhere</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>then you will see two tests skipped and two executed tests as expected:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -rs # this option reports skip reasons
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items
+
+test_plat.py s.s.                                                    [100%]
+========================= short test summary info ==========================
+SKIP [2] $REGENDOC_TMPDIR/conftest.py:12: cannot run on platform linux
+
+=================== 2 passed, 2 skipped in 0.12 seconds ====================
+</pre></div>
+</div>
+<p>Note that if you specify a platform via the marker-command line option like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -m linux
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items / 3 deselected
+
+test_plat.py .                                                       [100%]
+
+================== 1 passed, 3 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>then the unmarked-tests will not be run.  It is thus a way to restrict the run to the specific tests.</p>
+</div>
+<div class="section" id="automatically-adding-markers-based-on-test-names">
+<h2>Automatically adding markers based on test names<a class="headerlink" href="#automatically-adding-markers-based-on-test-names" title="Permalink to this headline">¶</a></h2>
+<p>If you a test suite where test function names indicate a certain
+type of test, you can implement a hook that automatically defines
+markers so that you can use the <code class="docutils literal notranslate"><span class="pre">-m</span></code> option with it. Let’s look
+at this test module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+
+<span class="k">def</span> <span class="nf">test_interface_simple</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+<span class="k">def</span> <span class="nf">test_interface_complex</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+<span class="k">def</span> <span class="nf">test_event_simple</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+<span class="k">def</span> <span class="nf">test_something_else</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>We want to dynamically define two markers and can do it in a
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> plugin:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="k">def</span> <span class="nf">pytest_collection_modifyitems</span><span class="p">(</span><span class="n">items</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;interface&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">nodeid</span><span class="p">:</span>
+            <span class="n">item</span><span class="o">.</span><span class="n">add_marker</span><span class="p">(</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">interface</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="s2">&quot;event&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">nodeid</span><span class="p">:</span>
+            <span class="n">item</span><span class="o">.</span><span class="n">add_marker</span><span class="p">(</span><span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">event</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now use the <code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">option</span></code> to select one set:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -m interface --tb=short
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items / 2 deselected
+
+test_module.py FF                                                    [100%]
+
+================================= FAILURES =================================
+__________________________ test_interface_simple ___________________________
+test_module.py:3: in test_interface_simple
+    assert 0
+E   assert 0
+__________________________ test_interface_complex __________________________
+test_module.py:6: in test_interface_complex
+    assert 0
+E   assert 0
+================== 2 failed, 2 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+<p>or to select both “event” and “interface” tests:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -m &quot;interface or event&quot; --tb=short
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items / 1 deselected
+
+test_module.py FFF                                                   [100%]
+
+================================= FAILURES =================================
+__________________________ test_interface_simple ___________________________
+test_module.py:3: in test_interface_simple
+    assert 0
+E   assert 0
+__________________________ test_interface_complex __________________________
+test_module.py:6: in test_interface_complex
+    assert 0
+E   assert 0
+____________________________ test_event_simple _____________________________
+test_module.py:9: in test_event_simple
+    assert 0
+E   assert 0
+================== 3 failed, 1 deselected in 0.12 seconds ==================
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="special.html" title="A session-fixture which can look at all collected tests"
+             >next</a></li>
+        <li class="right" >
+          <a href="parametrize.html" title="Parametrizing tests"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

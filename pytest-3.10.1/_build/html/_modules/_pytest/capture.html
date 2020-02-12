@@ -1,0 +1,854 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.capture &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.capture</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">per-test stdout/stderr capturing mechanism.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">collections</span>
+<span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">io</span> <span class="kn">import</span> <span class="n">UnsupportedOperation</span>
+<span class="kn">from</span> <span class="nn">tempfile</span> <span class="kn">import</span> <span class="n">TemporaryFile</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">CaptureIO</span>
+
+<span class="n">patchsysdict</span> <span class="o">=</span> <span class="p">{</span><span class="mi">0</span><span class="p">:</span> <span class="s2">&quot;stdin&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span> <span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="mi">2</span><span class="p">:</span> <span class="s2">&quot;stderr&quot;</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">getgroup</span><span class="p">(</span><span class="s2">&quot;general&quot;</span><span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">_addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--capture&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;fd&quot;</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;dup&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;sys&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;method&quot;</span><span class="p">,</span>
+        <span class="n">choices</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;fd&quot;</span><span class="p">,</span> <span class="s2">&quot;sys&quot;</span><span class="p">,</span> <span class="s2">&quot;no&quot;</span><span class="p">],</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;per-test capturing method: one of fd|sys|no.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">_addoption</span><span class="p">(</span>
+        <span class="s2">&quot;-s&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_const&quot;</span><span class="p">,</span>
+        <span class="n">const</span><span class="o">=</span><span class="s2">&quot;no&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;capture&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;shortcut for --capture=no.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">pytest_load_initial_conftests</span><span class="p">(</span><span class="n">early_config</span><span class="p">,</span> <span class="n">parser</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+    <span class="n">ns</span> <span class="o">=</span> <span class="n">early_config</span><span class="o">.</span><span class="n">known_args_namespace</span>
+    <span class="k">if</span> <span class="n">ns</span><span class="o">.</span><span class="n">capture</span> <span class="o">==</span> <span class="s2">&quot;fd&quot;</span><span class="p">:</span>
+        <span class="n">_py36_windowsconsoleio_workaround</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">)</span>
+    <span class="n">_colorama_workaround</span><span class="p">()</span>
+    <span class="n">_readline_workaround</span><span class="p">()</span>
+    <span class="n">pluginmanager</span> <span class="o">=</span> <span class="n">early_config</span><span class="o">.</span><span class="n">pluginmanager</span>
+    <span class="n">capman</span> <span class="o">=</span> <span class="n">CaptureManager</span><span class="p">(</span><span class="n">ns</span><span class="o">.</span><span class="n">capture</span><span class="p">)</span>
+    <span class="n">pluginmanager</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">capman</span><span class="p">,</span> <span class="s2">&quot;capturemanager&quot;</span><span class="p">)</span>
+
+    <span class="c1"># make sure that capturemanager is properly reset at final shutdown</span>
+    <span class="n">early_config</span><span class="o">.</span><span class="n">add_cleanup</span><span class="p">(</span><span class="n">capman</span><span class="o">.</span><span class="n">stop_global_capturing</span><span class="p">)</span>
+
+    <span class="c1"># make sure logging does not raise exceptions at the end</span>
+    <span class="k">def</span> <span class="nf">silence_logging_at_shutdown</span><span class="p">():</span>
+        <span class="k">if</span> <span class="s2">&quot;logging&quot;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>
+            <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s2">&quot;logging&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">raiseExceptions</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">early_config</span><span class="o">.</span><span class="n">add_cleanup</span><span class="p">(</span><span class="n">silence_logging_at_shutdown</span><span class="p">)</span>
+
+    <span class="c1"># finally trigger conftest loading but while capturing (issue93)</span>
+    <span class="n">capman</span><span class="o">.</span><span class="n">start_global_capturing</span><span class="p">()</span>
+    <span class="n">outcome</span> <span class="o">=</span> <span class="k">yield</span>
+    <span class="n">capman</span><span class="o">.</span><span class="n">suspend_global_capture</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">outcome</span><span class="o">.</span><span class="n">excinfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="n">capman</span><span class="o">.</span><span class="n">read_global_capture</span><span class="p">()</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">CaptureManager</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Capture plugin, manages that the appropriate capture method is enabled/disabled during collection and each</span>
+<span class="sd">    test phase (setup, call, teardown). After each of those points, the captured output is obtained and</span>
+<span class="sd">    attached to the collection/runtest report.</span>
+
+<span class="sd">    There are two levels of capture:</span>
+<span class="sd">    * global: which is enabled by default and can be suppressed by the ``-s`` option. This is always enabled/disabled</span>
+<span class="sd">      during collection and each test phase.</span>
+<span class="sd">    * fixture: when a test function or one of its fixture depend on the ``capsys`` or ``capfd`` fixtures. In this</span>
+<span class="sd">      case special handling is needed to ensure the fixtures take precedence over the global capture.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">=</span> <span class="n">method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_item</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">_getcapture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;fd&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MultiCapture</span><span class="p">(</span><span class="n">out</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">Capture</span><span class="o">=</span><span class="n">FDCapture</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;sys&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MultiCapture</span><span class="p">(</span><span class="n">out</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">Capture</span><span class="o">=</span><span class="n">SysCapture</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;no&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">MultiCapture</span><span class="p">(</span><span class="n">out</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;unknown capturing method: </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="n">method</span><span class="p">)</span>
+
+    <span class="c1"># Global capturing control</span>
+
+    <span class="k">def</span> <span class="nf">is_globally_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_method</span> <span class="o">!=</span> <span class="s2">&quot;no&quot;</span>
+
+    <span class="k">def</span> <span class="nf">start_global_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getcapture</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_method</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span><span class="o">.</span><span class="n">start_capturing</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">stop_global_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span><span class="o">.</span><span class="n">pop_outerr_to_orig</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span><span class="o">.</span><span class="n">stop_capturing</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">resume_global_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span><span class="o">.</span><span class="n">resume_capturing</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">suspend_global_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">cap</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_global_capturing&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">cap</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cap</span><span class="o">.</span><span class="n">suspend_capturing</span><span class="p">(</span><span class="n">in_</span><span class="o">=</span><span class="n">in_</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">read_global_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_global_capturing</span><span class="o">.</span><span class="n">readouterr</span><span class="p">()</span>
+
+    <span class="c1"># Fixture Control (it&#39;s just forwarding, think about removing this later)</span>
+
+    <span class="k">def</span> <span class="nf">activate_fixture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;If the current item is using ``capsys`` or ``capfd``, activate them so they take precedence over</span>
+<span class="sd">        the global capture.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fixture</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;_capture_fixture&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fixture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fixture</span><span class="o">.</span><span class="n">_start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">deactivate_fixture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Deactivates the ``capsys`` or ``capfd`` fixture of this item, if any.&quot;&quot;&quot;</span>
+        <span class="n">fixture</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;_capture_fixture&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fixture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fixture</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">suspend_fixture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">fixture</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;_capture_fixture&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fixture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fixture</span><span class="o">.</span><span class="n">_suspend</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">resume_fixture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="n">fixture</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;_capture_fixture&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fixture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">fixture</span><span class="o">.</span><span class="n">_resume</span><span class="p">()</span>
+
+    <span class="c1"># Helper context managers</span>
+
+    <span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+    <span class="k">def</span> <span class="nf">global_and_fixture_disabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Context manager to temporarily disables global and current fixture capturing.&quot;&quot;&quot;</span>
+        <span class="c1"># Need to undo local capsys-et-al if exists before disabling global capture</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suspend_fixture</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_current_item</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">suspend_global_capture</span><span class="p">(</span><span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resume_global_capture</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resume_fixture</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_current_item</span><span class="p">)</span>
+
+    <span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+    <span class="k">def</span> <span class="nf">item_capture</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">when</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">resume_global_capture</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">activate_fixture</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">yield</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">deactivate_fixture</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">suspend_global_capture</span><span class="p">(</span><span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_global_capture</span><span class="p">()</span>
+        <span class="n">item</span><span class="o">.</span><span class="n">add_report_section</span><span class="p">(</span><span class="n">when</span><span class="p">,</span> <span class="s2">&quot;stdout&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">)</span>
+        <span class="n">item</span><span class="o">.</span><span class="n">add_report_section</span><span class="p">(</span><span class="n">when</span><span class="p">,</span> <span class="s2">&quot;stderr&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">)</span>
+
+    <span class="c1"># Hooks</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_make_collect_report</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">collector</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">collector</span><span class="p">,</span> <span class="n">pytest</span><span class="o">.</span><span class="n">File</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">resume_global_capture</span><span class="p">()</span>
+            <span class="n">outcome</span> <span class="o">=</span> <span class="k">yield</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">suspend_global_capture</span><span class="p">()</span>
+            <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">read_global_capture</span><span class="p">()</span>
+            <span class="n">rep</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">out</span><span class="p">:</span>
+                <span class="n">rep</span><span class="o">.</span><span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;Captured stdout&quot;</span><span class="p">,</span> <span class="n">out</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+                <span class="n">rep</span><span class="o">.</span><span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;Captured stderr&quot;</span><span class="p">,</span> <span class="n">err</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">yield</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_runtest_protocol</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_item</span> <span class="o">=</span> <span class="n">item</span>
+        <span class="k">yield</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_current_item</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">item_capture</span><span class="p">(</span><span class="s2">&quot;setup&quot;</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+            <span class="k">yield</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_runtest_call</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">item_capture</span><span class="p">(</span><span class="s2">&quot;call&quot;</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+            <span class="k">yield</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_runtest_teardown</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">item_capture</span><span class="p">(</span><span class="s2">&quot;teardown&quot;</span><span class="p">,</span> <span class="n">item</span><span class="p">):</span>
+            <span class="k">yield</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_keyboard_interrupt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_global_capturing</span><span class="p">()</span>
+
+    <span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">pytest_internalerror</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_global_capturing</span><span class="p">()</span>
+
+
+<span class="n">capture_fixtures</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;capfd&quot;</span><span class="p">,</span> <span class="s2">&quot;capfdbinary&quot;</span><span class="p">,</span> <span class="s2">&quot;capsys&quot;</span><span class="p">,</span> <span class="s2">&quot;capsysbinary&quot;</span><span class="p">}</span>
+
+
+<span class="k">def</span> <span class="nf">_ensure_only_one_capture_fixture</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+    <span class="n">fixtures</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">fixturenames</span><span class="p">)</span> <span class="o">&amp;</span> <span class="n">capture_fixtures</span> <span class="o">-</span> <span class="p">{</span><span class="n">name</span><span class="p">}</span>
+    <span class="k">if</span> <span class="n">fixtures</span><span class="p">:</span>
+        <span class="n">fixtures</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">fixtures</span><span class="p">)</span>
+        <span class="n">fixtures</span> <span class="o">=</span> <span class="n">fixtures</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">fixtures</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">fixtures</span>
+        <span class="k">raise</span> <span class="n">request</span><span class="o">.</span><span class="n">raiseerror</span><span class="p">(</span>
+            <span class="s2">&quot;cannot use </span><span class="si">{}</span><span class="s2"> and </span><span class="si">{}</span><span class="s2"> at the same time&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">fixtures</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="capsys"><a class="viewcode-back" href="../../reference.html#_pytest.capture.capsys">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">capsys</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Enable capturing of writes to ``sys.stdout`` and ``sys.stderr`` and make</span>
+<span class="sd">    captured output available via ``capsys.readouterr()`` method calls</span>
+<span class="sd">    which return a ``(out, err)`` namedtuple.  ``out`` and ``err`` will be ``text``</span>
+<span class="sd">    objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_only_one_capture_fixture</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;capsys&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">_install_capture_fixture_on_item</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">SysCapture</span><span class="p">)</span> <span class="k">as</span> <span class="n">fixture</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">fixture</span></div>
+
+
+<div class="viewcode-block" id="capsysbinary"><a class="viewcode-back" href="../../reference.html#_pytest.capture.capsysbinary">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">capsysbinary</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Enable capturing of writes to ``sys.stdout`` and ``sys.stderr`` and make</span>
+<span class="sd">    captured output available via ``capsys.readouterr()`` method calls</span>
+<span class="sd">    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be ``bytes``</span>
+<span class="sd">    objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_only_one_capture_fixture</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;capsysbinary&quot;</span><span class="p">)</span>
+    <span class="c1"># Currently, the implementation uses the python3 specific `.buffer`</span>
+    <span class="c1"># property of CaptureIO.</span>
+    <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,):</span>
+        <span class="k">raise</span> <span class="n">request</span><span class="o">.</span><span class="n">raiseerror</span><span class="p">(</span><span class="s2">&quot;capsysbinary is only supported on python 3&quot;</span><span class="p">)</span>
+    <span class="k">with</span> <span class="n">_install_capture_fixture_on_item</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">SysCaptureBinary</span><span class="p">)</span> <span class="k">as</span> <span class="n">fixture</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">fixture</span></div>
+
+
+<div class="viewcode-block" id="capfd"><a class="viewcode-back" href="../../reference.html#_pytest.capture.capfd">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">capfd</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Enable capturing of writes to file descriptors ``1`` and ``2`` and make</span>
+<span class="sd">    captured output available via ``capfd.readouterr()`` method calls</span>
+<span class="sd">    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be ``text``</span>
+<span class="sd">    objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_only_one_capture_fixture</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;capfd&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;dup&quot;</span><span class="p">):</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span>
+            <span class="s2">&quot;capfd fixture needs os.dup function which is not available in this system&quot;</span>
+        <span class="p">)</span>
+    <span class="k">with</span> <span class="n">_install_capture_fixture_on_item</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">FDCapture</span><span class="p">)</span> <span class="k">as</span> <span class="n">fixture</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">fixture</span></div>
+
+
+<div class="viewcode-block" id="capfdbinary"><a class="viewcode-back" href="../../reference.html#_pytest.capture.capfdbinary">[docs]</a><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">capfdbinary</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Enable capturing of write to file descriptors 1 and 2 and make</span>
+<span class="sd">    captured output available via ``capfdbinary.readouterr`` method calls</span>
+<span class="sd">    which return a ``(out, err)`` tuple.  ``out`` and ``err`` will be</span>
+<span class="sd">    ``bytes`` objects.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">_ensure_only_one_capture_fixture</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="s2">&quot;capfdbinary&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">os</span><span class="p">,</span> <span class="s2">&quot;dup&quot;</span><span class="p">):</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span>
+            <span class="s2">&quot;capfdbinary fixture needs os.dup function which is not available in this system&quot;</span>
+        <span class="p">)</span>
+    <span class="k">with</span> <span class="n">_install_capture_fixture_on_item</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">FDCaptureBinary</span><span class="p">)</span> <span class="k">as</span> <span class="n">fixture</span><span class="p">:</span>
+        <span class="k">yield</span> <span class="n">fixture</span></div>
+
+
+<span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+<span class="k">def</span> <span class="nf">_install_capture_fixture_on_item</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">capture_class</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Context manager which creates a ``CaptureFixture`` instance and &quot;installs&quot; it on</span>
+<span class="sd">    the item/node of the given request. Used by ``capsys`` and ``capfd``.</span>
+
+<span class="sd">    The CaptureFixture is added as attribute of the item because it needs to accessed</span>
+<span class="sd">    by ``CaptureManager`` during its ``pytest_runtest_*`` hooks.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">_capture_fixture</span> <span class="o">=</span> <span class="n">fixture</span> <span class="o">=</span> <span class="n">CaptureFixture</span><span class="p">(</span><span class="n">capture_class</span><span class="p">,</span> <span class="n">request</span><span class="p">)</span>
+    <span class="n">capmanager</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">pluginmanager</span><span class="o">.</span><span class="n">getplugin</span><span class="p">(</span><span class="s2">&quot;capturemanager&quot;</span><span class="p">)</span>
+    <span class="c1"># need to active this fixture right away in case it is being used by another fixture (setup phase)</span>
+    <span class="c1"># if this fixture is being used only by a test function (call phase), then we wouldn&#39;t need this</span>
+    <span class="c1"># activation, but it doesn&#39;t hurt</span>
+    <span class="n">capmanager</span><span class="o">.</span><span class="n">activate_fixture</span><span class="p">(</span><span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="p">)</span>
+    <span class="k">yield</span> <span class="n">fixture</span>
+    <span class="n">fixture</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+    <span class="k">del</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">_capture_fixture</span>
+
+
+<div class="viewcode-block" id="CaptureFixture"><a class="viewcode-back" href="../../reference.html#_pytest.capture.CaptureFixture">[docs]</a><span class="k">class</span> <span class="nc">CaptureFixture</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Object returned by :py:func:`capsys`, :py:func:`capsysbinary`, :py:func:`capfd` and :py:func:`capfdbinary`</span>
+<span class="sd">    fixtures.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">captureclass</span><span class="p">,</span> <span class="n">request</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span> <span class="o">=</span> <span class="n">captureclass</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">request</span> <span class="o">=</span> <span class="n">request</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_captured_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span><span class="o">.</span><span class="n">EMPTY_BUFFER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_captured_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span><span class="o">.</span><span class="n">EMPTY_BUFFER</span>
+
+    <span class="k">def</span> <span class="nf">_start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># Start if not started yet</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_capture&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span> <span class="o">=</span> <span class="n">MultiCapture</span><span class="p">(</span>
+                <span class="n">out</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">Capture</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">start_capturing</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">pop_outerr_to_orig</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_captured_out</span> <span class="o">+=</span> <span class="n">out</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_captured_err</span> <span class="o">+=</span> <span class="n">err</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">stop_capturing</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span> <span class="o">=</span> <span class="kc">None</span>
+
+<div class="viewcode-block" id="CaptureFixture.readouterr"><a class="viewcode-back" href="../../reference.html#_pytest.capture.CaptureFixture.readouterr">[docs]</a>    <span class="k">def</span> <span class="nf">readouterr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Read and return the captured output so far, resetting the internal buffer.</span>
+
+<span class="sd">        :return: captured content as a namedtuple with  ``out`` and ``err`` string attributes</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">captured_out</span><span class="p">,</span> <span class="n">captured_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_captured_out</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_captured_err</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">readouterr</span><span class="p">()</span>
+            <span class="n">captured_out</span> <span class="o">+=</span> <span class="n">out</span>
+            <span class="n">captured_err</span> <span class="o">+=</span> <span class="n">err</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_captured_out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span><span class="o">.</span><span class="n">EMPTY_BUFFER</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_captured_err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">captureclass</span><span class="o">.</span><span class="n">EMPTY_BUFFER</span>
+        <span class="k">return</span> <span class="n">CaptureResult</span><span class="p">(</span><span class="n">captured_out</span><span class="p">,</span> <span class="n">captured_err</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Suspends this fixture&#39;s own capturing temporarily.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">suspend_capturing</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">_resume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Resumes this fixture&#39;s own capturing temporarily.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_capture</span><span class="o">.</span><span class="n">resume_capturing</span><span class="p">()</span>
+
+<div class="viewcode-block" id="CaptureFixture.disabled"><a class="viewcode-back" href="../../reference.html#_pytest.capture.CaptureFixture.disabled">[docs]</a>    <span class="nd">@contextlib</span><span class="o">.</span><span class="n">contextmanager</span>
+    <span class="k">def</span> <span class="nf">disabled</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Temporarily disables capture while inside the &#39;with&#39; block.&quot;&quot;&quot;</span>
+        <span class="n">capmanager</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">pluginmanager</span><span class="o">.</span><span class="n">getplugin</span><span class="p">(</span><span class="s2">&quot;capturemanager&quot;</span><span class="p">)</span>
+        <span class="k">with</span> <span class="n">capmanager</span><span class="o">.</span><span class="n">global_and_fixture_disabled</span><span class="p">():</span>
+            <span class="k">yield</span></div></div>
+
+
+<span class="k">def</span> <span class="nf">safe_text_dupfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">default_encoding</span><span class="o">=</span><span class="s2">&quot;UTF8&quot;</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; return an open text file object that&#39;s a duplicate of f on the</span>
+<span class="sd">        FD-level if possible.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">encoding</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;encoding&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fd</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;b&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;mode&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="s2">&quot;encoding&quot;</span><span class="p">):</span>
+            <span class="c1"># we seem to have a text stream, let&#39;s just use it</span>
+            <span class="k">return</span> <span class="n">f</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">newfd</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">dup</span><span class="p">(</span><span class="n">fd</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">&quot;b&quot;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">mode</span><span class="p">:</span>
+            <span class="n">mode</span> <span class="o">+=</span> <span class="s2">&quot;b&quot;</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">fdopen</span><span class="p">(</span><span class="n">newfd</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># no buffering</span>
+    <span class="k">return</span> <span class="n">EncodedFile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">encoding</span> <span class="ow">or</span> <span class="n">default_encoding</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">EncodedFile</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">errors</span> <span class="o">=</span> <span class="s2">&quot;strict&quot;</span>  <span class="c1"># possibly needed by py3 code (issue555)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">buffer</span><span class="p">,</span> <span class="n">encoding</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span> <span class="o">=</span> <span class="n">buffer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">encoding</span> <span class="o">=</span> <span class="n">encoding</span>
+
+    <span class="k">def</span> <span class="nf">write</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">):</span>
+            <span class="n">obj</span> <span class="o">=</span> <span class="n">obj</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">encoding</span><span class="p">,</span> <span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">writelines</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">linelist</span><span class="p">):</span>
+        <span class="n">data</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">linelist</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Ensure that file.name is a string.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">repr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">buffer</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__getattr__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">getattr</span><span class="p">(</span><span class="nb">object</span><span class="o">.</span><span class="fm">__getattribute__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;buffer&quot;</span><span class="p">),</span> <span class="n">name</span><span class="p">)</span>
+
+
+<span class="n">CaptureResult</span> <span class="o">=</span> <span class="n">collections</span><span class="o">.</span><span class="n">namedtuple</span><span class="p">(</span><span class="s2">&quot;CaptureResult&quot;</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;out&quot;</span><span class="p">,</span> <span class="s2">&quot;err&quot;</span><span class="p">])</span>
+
+
+<span class="k">class</span> <span class="nc">MultiCapture</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">err</span> <span class="o">=</span> <span class="n">in_</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">out</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">err</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">in_</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">Capture</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">in_</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_</span> <span class="o">=</span> <span class="n">Capture</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span> <span class="o">=</span> <span class="n">Capture</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="o">=</span> <span class="n">Capture</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">start_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">pop_outerr_to_orig</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; pop current snapshot out/err capture and flush to orig streams. &quot;&quot;&quot;</span>
+        <span class="n">out</span><span class="p">,</span> <span class="n">err</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">readouterr</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">writeorg</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">writeorg</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span><span class="p">,</span> <span class="n">err</span>
+
+    <span class="k">def</span> <span class="nf">suspend_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">in_</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">suspend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">suspend</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">in_</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="o">.</span><span class="n">suspend</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_in_suspended</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="k">def</span> <span class="nf">resume_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_in_suspended&quot;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+            <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_in_suspended</span>
+
+    <span class="k">def</span> <span class="nf">stop_capturing</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; stop capturing and reset capturing streams &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">&quot;_reset&quot;</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;was already stopped&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_reset</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">in_</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">readouterr</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return snapshot unicode value of stdout/stderr capturings. &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">CaptureResult</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">snap</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">out</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">err</span><span class="o">.</span><span class="n">snap</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">err</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">NoCapture</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="n">EMPTY_BUFFER</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="fm">__init__</span> <span class="o">=</span> <span class="n">start</span> <span class="o">=</span> <span class="n">done</span> <span class="o">=</span> <span class="n">suspend</span> <span class="o">=</span> <span class="n">resume</span> <span class="o">=</span> <span class="k">lambda</span> <span class="o">*</span><span class="n">args</span><span class="p">:</span> <span class="kc">None</span>
+
+
+<span class="k">class</span> <span class="nc">FDCaptureBinary</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Capture IO to/from a given os-level filedescriptor.</span>
+
+<span class="sd">    snap() produces `bytes`</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EMPTY_BUFFER</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">targetfd</span><span class="p">,</span> <span class="n">tmpfile</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span> <span class="o">=</span> <span class="n">targetfd</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">targetfd_save</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">dup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">done</span> <span class="o">=</span> <span class="k">lambda</span><span class="p">:</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">targetfd</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">assert</span> <span class="ow">not</span> <span class="n">tmpfile</span><span class="p">,</span> <span class="s2">&quot;cannot set tmpfile with stdin&quot;</span>
+                <span class="n">tmpfile</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">devnull</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span> <span class="o">=</span> <span class="n">SysCapture</span><span class="p">(</span><span class="n">targetfd</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">tmpfile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">f</span> <span class="o">=</span> <span class="n">TemporaryFile</span><span class="p">()</span>
+                    <span class="k">with</span> <span class="n">f</span><span class="p">:</span>
+                        <span class="n">tmpfile</span> <span class="o">=</span> <span class="n">safe_text_dupfile</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;wb+&quot;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">targetfd</span> <span class="ow">in</span> <span class="n">patchsysdict</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span> <span class="o">=</span> <span class="n">SysCapture</span><span class="p">(</span><span class="n">targetfd</span><span class="p">,</span> <span class="n">tmpfile</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span> <span class="o">=</span> <span class="n">NoCapture</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span> <span class="o">=</span> <span class="n">tmpfile</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile_fd</span> <span class="o">=</span> <span class="n">tmpfile</span><span class="o">.</span><span class="n">fileno</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;FDCapture </span><span class="si">%s</span><span class="s2"> oldfd=</span><span class="si">%s</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targetfd_save</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; Start capturing on targetfd using memorized tmpfile. &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">fstat</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targetfd_save</span><span class="p">)</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">AttributeError</span><span class="p">,</span> <span class="ne">OSError</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;saved filedescriptor not valid anymore&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmpfile_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">snap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">truncate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; stop capturing, restore streams, return original capture file,</span>
+<span class="sd">        seeked to position zero. &quot;&quot;&quot;</span>
+        <span class="n">targetfd_save</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;targetfd_save&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="n">targetfd_save</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">targetfd_save</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span><span class="o">.</span><span class="n">done</span><span class="p">()</span>
+        <span class="n">_attempt_to_close_capture_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span><span class="o">.</span><span class="n">suspend</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targetfd_save</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">resume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">syscapture</span><span class="o">.</span><span class="n">resume</span><span class="p">()</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">dup2</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmpfile_fd</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">targetfd</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">writeorg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; write to original file descriptor. &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">):</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf8&quot;</span><span class="p">)</span>  <span class="c1"># XXX use encoding of original stream</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">targetfd_save</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">FDCapture</span><span class="p">(</span><span class="n">FDCaptureBinary</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Capture IO to/from a given os-level filedescriptor.</span>
+
+<span class="sd">    snap() produces text</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">EMPTY_BUFFER</span> <span class="o">=</span> <span class="nb">str</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="nf">snap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">FDCaptureBinary</span><span class="o">.</span><span class="n">snap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span>
+        <span class="n">enc</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="p">,</span> <span class="s2">&quot;encoding&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">enc</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">):</span>
+            <span class="n">res</span> <span class="o">=</span> <span class="n">six</span><span class="o">.</span><span class="n">text_type</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">enc</span><span class="p">,</span> <span class="s2">&quot;replace&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">class</span> <span class="nc">SysCapture</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+
+    <span class="n">EMPTY_BUFFER</span> <span class="o">=</span> <span class="nb">str</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fd</span><span class="p">,</span> <span class="n">tmpfile</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="n">patchsysdict</span><span class="p">[</span><span class="n">fd</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+        <span class="k">if</span> <span class="n">tmpfile</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;stdin&quot;</span><span class="p">:</span>
+                <span class="n">tmpfile</span> <span class="o">=</span> <span class="n">DontReadFromInput</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tmpfile</span> <span class="o">=</span> <span class="n">CaptureIO</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span> <span class="o">=</span> <span class="n">tmpfile</span>
+
+    <span class="k">def</span> <span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">snap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">truncate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+    <span class="k">def</span> <span class="nf">done</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_old</span><span class="p">)</span>
+        <span class="k">del</span> <span class="bp">self</span><span class="o">.</span><span class="n">_old</span>
+        <span class="n">_attempt_to_close_capture_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">suspend</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_old</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">resume</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">setattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">writeorg</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_old</span><span class="o">.</span><span class="n">flush</span><span class="p">()</span>
+
+
+<span class="k">class</span> <span class="nc">SysCaptureBinary</span><span class="p">(</span><span class="n">SysCapture</span><span class="p">):</span>
+    <span class="n">EMPTY_BUFFER</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">snap</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">seek</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmpfile</span><span class="o">.</span><span class="n">truncate</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">res</span>
+
+
+<span class="k">class</span> <span class="nc">DontReadFromInput</span><span class="p">(</span><span class="n">six</span><span class="o">.</span><span class="n">Iterator</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Temporary stub class.  Ideally when stdin is accessed, the</span>
+<span class="sd">    capturing should be turned off, with possibly all data captured</span>
+<span class="sd">    so far sent to the screen.  This should be configurable, though,</span>
+<span class="sd">    because in automated test runs it is better to crash than</span>
+<span class="sd">    hang indefinitely.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">encoding</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="nf">read</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span><span class="s2">&quot;reading from stdin while output is captured&quot;</span><span class="p">)</span>
+
+    <span class="n">readline</span> <span class="o">=</span> <span class="n">read</span>
+    <span class="n">readlines</span> <span class="o">=</span> <span class="n">read</span>
+    <span class="fm">__next__</span> <span class="o">=</span> <span class="n">read</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="nf">fileno</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">UnsupportedOperation</span><span class="p">(</span><span class="s2">&quot;redirected stdin is pseudofile, has no fileno()&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">isatty</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">buffer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">AttributeError</span><span class="p">(</span><span class="s2">&quot;redirected stdin has no attribute buffer&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_colorama_workaround</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensure colorama is imported so that it attaches to the correct stdio</span>
+<span class="sd">    handles on Windows.</span>
+
+<span class="sd">    colorama uses the terminal on import time. So if something does the</span>
+<span class="sd">    first import of colorama while I/O capture is active, colorama will</span>
+<span class="sd">    fail in various ways.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;win32&quot;</span><span class="p">):</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">colorama</span>  <span class="c1"># noqa</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_readline_workaround</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Ensure readline is imported so that it attaches to the correct stdio</span>
+<span class="sd">    handles on Windows.</span>
+
+<span class="sd">    Pdb uses readline support where available--when not running from the Python</span>
+<span class="sd">    prompt, the readline module is not imported until running the pdb REPL.  If</span>
+<span class="sd">    running pytest with the --pdb option this means the readline module is not</span>
+<span class="sd">    imported until after I/O capture has been started.</span>
+
+<span class="sd">    This is a problem for pyreadline, which is often used to implement readline</span>
+<span class="sd">    support on Windows, as it does not attach to the correct handles for stdout</span>
+<span class="sd">    and/or stdin if they have been redirected by the FDCapture mechanism.  This</span>
+<span class="sd">    workaround ensures that readline is imported before I/O capture is setup so</span>
+<span class="sd">    that it can attach to the actual stdin/out for the console.</span>
+
+<span class="sd">    See https://github.com/pytest-dev/pytest/pull/1281</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;win32&quot;</span><span class="p">):</span>
+        <span class="k">return</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">readline</span>  <span class="c1"># noqa</span>
+    <span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">_py36_windowsconsoleio_workaround</span><span class="p">(</span><span class="n">stream</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Python 3.6 implemented unicode console handling for Windows. This works</span>
+<span class="sd">    by reading/writing to the raw console handle using</span>
+<span class="sd">    ``{Read,Write}ConsoleW``.</span>
+
+<span class="sd">    The problem is that we are going to ``dup2`` over the stdio file</span>
+<span class="sd">    descriptors when doing ``FDCapture`` and this will ``CloseHandle`` the</span>
+<span class="sd">    handles used by Python to write to the console. Though there is still some</span>
+<span class="sd">    weirdness and the console handle seems to only be closed randomly and not</span>
+<span class="sd">    on the first call to ``CloseHandle``, or maybe it gets reopened with the</span>
+<span class="sd">    same handle value when we suspend capturing.</span>
+
+<span class="sd">    The workaround in this case will reopen stdio with a different fd which</span>
+<span class="sd">    also means a different handle by replicating the logic in</span>
+<span class="sd">    &quot;Py_lifecycle.c:initstdio/create_stdio&quot;.</span>
+
+<span class="sd">    :param stream: in practice ``sys.stdout`` or ``sys.stderr``, but given</span>
+<span class="sd">        here as parameter for unittesting purposes.</span>
+
+<span class="sd">    See https://github.com/pytest-dev/py/issues/103</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sys</span><span class="o">.</span><span class="n">platform</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;win32&quot;</span><span class="p">)</span> <span class="ow">or</span> <span class="n">sys</span><span class="o">.</span><span class="n">version_info</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span> <span class="o">&lt;</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">):</span>
+        <span class="k">return</span>
+
+    <span class="c1"># bail out if ``stream`` doesn&#39;t seem like a proper ``io`` stream (#2666)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span> <span class="s2">&quot;buffer&quot;</span><span class="p">):</span>
+        <span class="k">return</span>
+
+    <span class="n">buffered</span> <span class="o">=</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">stream</span><span class="o">.</span><span class="n">buffer</span><span class="p">,</span> <span class="s2">&quot;raw&quot;</span><span class="p">)</span>
+    <span class="n">raw_stdout</span> <span class="o">=</span> <span class="n">stream</span><span class="o">.</span><span class="n">buffer</span><span class="o">.</span><span class="n">raw</span> <span class="k">if</span> <span class="n">buffered</span> <span class="k">else</span> <span class="n">stream</span><span class="o">.</span><span class="n">buffer</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">raw_stdout</span><span class="p">,</span> <span class="n">io</span><span class="o">.</span><span class="n">_WindowsConsoleIO</span><span class="p">):</span>
+        <span class="k">return</span>
+
+    <span class="k">def</span> <span class="nf">_reopen_stdio</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">buffered</span> <span class="ow">and</span> <span class="n">mode</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;w&quot;</span><span class="p">:</span>
+            <span class="n">buffering</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">buffering</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+
+        <span class="k">return</span> <span class="n">io</span><span class="o">.</span><span class="n">TextIOWrapper</span><span class="p">(</span>
+            <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">dup</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">fileno</span><span class="p">()),</span> <span class="n">mode</span><span class="p">,</span> <span class="n">buffering</span><span class="p">),</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">encoding</span><span class="p">,</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">errors</span><span class="p">,</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">newlines</span><span class="p">,</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">line_buffering</span><span class="p">,</span>
+        <span class="p">)</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">__stdin__</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span> <span class="o">=</span> <span class="n">_reopen_stdio</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="p">,</span> <span class="s2">&quot;rb&quot;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">__stdout__</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdout</span> <span class="o">=</span> <span class="n">_reopen_stdio</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stdout</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
+    <span class="n">sys</span><span class="o">.</span><span class="n">__stderr__</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">stderr</span> <span class="o">=</span> <span class="n">_reopen_stdio</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">stderr</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">_attempt_to_close_capture_file</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Suppress IOError when closing the temporary file used for capturing streams in py27 (#2370)&quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY2</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">IOError</span><span class="p">:</span>
+            <span class="k">pass</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

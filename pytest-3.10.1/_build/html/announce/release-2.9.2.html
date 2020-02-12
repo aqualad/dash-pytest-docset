@@ -1,0 +1,135 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.9.2 &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.9.1" href="release-2.9.1.html" />
+    <link rel="prev" title="python testing sprint June 20th-26th 2016" href="sprint2016.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.9.1.html" title="pytest-2.9.1"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="sprint2016.html" title="python testing sprint June 20th-26th 2016"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-9-2">
+<h1>pytest-2.9.2<a class="headerlink" href="#pytest-2-9-2" title="Permalink to this headline">¶</a></h1>
+<p>pytest is a mature Python testing tool with more than a 1100 tests
+against itself, passing on many different interpreters and platforms.</p>
+<p>See below for the changes and see docs at:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>As usual, you can upgrade from pypi via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Thanks to all who contributed to this release, among them:</p>
+<blockquote>
+<div>Adam Chainz
+Benjamin Dopplinger
+Bruno Oliveira
+Florian Bruhin
+John Towler
+Martin Prusse
+Meng Jue
+MengJueM
+Omar Kohl
+Quentin Pradet
+Ronny Pfannschmidt
+Thomas Güttler
+TomV
+Tyler Goodlet</div></blockquote>
+<p>Happy testing,
+The py.test Development Team</p>
+<div class="section" id="compared-to-2-9-1">
+<h2>2.9.2 (compared to 2.9.1)<a class="headerlink" href="#compared-to-2-9-1" title="Permalink to this headline">¶</a></h2>
+<p><strong>Bug Fixes</strong></p>
+<ul class="simple">
+<li>fix <a class="reference external" href="https://github.com/pytest-dev/pytest/issues/510">#510</a>: skip tests where one parameterize dimension was empty
+thanks Alex Stapleton for the Report and <a class="reference external" href="https://github.com/RonnyPfannschmidt">&#64;RonnyPfannschmidt</a> for the PR</li>
+<li>Fix Xfail does not work with condition keyword argument.
+Thanks <a class="reference external" href="https://github.com/astraw38">&#64;astraw38</a> for reporting the issue (<a class="reference external" href="https://github.com/pytest-dev/pytest/issue/1496">#1496</a>) and <a class="reference external" href="https://github.com/tomviner">&#64;tomviner</a>
+for PR the (<a class="reference external" href="https://github.com/pytest-dev/pytest/issue/1524">#1524</a>).</li>
+<li>Fix win32 path issue when putting custom config file with absolute path
+in <code class="docutils literal notranslate"><span class="pre">pytest.main(&quot;-c</span> <span class="pre">your_absolute_path&quot;)</span></code>.</li>
+<li>Fix maximum recursion depth detection when raised error class is not aware
+of unicode/encoded bytes.
+Thanks <a class="reference external" href="https://github.com/prusse-martin">&#64;prusse-martin</a> for the PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1506">#1506</a>).</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">pytest.mark.skip</span></code> mark when used in strict mode.
+Thanks <a class="reference external" href="https://github.com/pquentin">&#64;pquentin</a> for the PR and <a class="reference external" href="https://github.com/RonnyPfannschmidt">&#64;RonnyPfannschmidt</a> for
+showing how to fix the bug.</li>
+<li>Minor improvements and fixes to the documentation.
+Thanks <a class="reference external" href="https://github.com/omarkohl">&#64;omarkohl</a> for the PR.</li>
+<li>Fix <code class="docutils literal notranslate"><span class="pre">--fixtures</span></code> to show all fixture definitions as opposed to just
+one per fixture name.
+Thanks to <a class="reference external" href="https://github.com/hackebrot">&#64;hackebrot</a> for the PR.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.9.1.html" title="pytest-2.9.1"
+             >next</a></li>
+        <li class="right" >
+          <a href="sprint2016.html" title="python testing sprint June 20th-26th 2016"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

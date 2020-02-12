@@ -1,0 +1,291 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Logging &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Reference" href="reference.html" />
+    <link rel="prev" title="Writing plugins" href="writing_plugins.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="reference.html" title="Reference"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="writing_plugins.html" title="Writing plugins"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="logging">
+<span id="id1"></span><h1>Logging<a class="headerlink" href="#logging" title="Permalink to this headline">¶</a></h1>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.3.</span></p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 3.4.</span></p>
+</div>
+<p>pytest captures log messages of level <code class="docutils literal notranslate"><span class="pre">WARNING</span></code> or above automatically and displays them in their own section
+for each failed test in the same manner as captured stdout and stderr.</p>
+<p>Running without options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Shows failed tests like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stdlog</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="n">test_reporting</span><span class="o">.</span><span class="n">py</span>    <span class="mi">26</span> <span class="n">WARNING</span>  <span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">logger</span>
+<span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stdout</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">stdout</span>
+<span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stderr</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">stderr</span>
+<span class="o">====================</span> <span class="mi">2</span> <span class="n">failed</span> <span class="ow">in</span> <span class="mf">0.02</span> <span class="n">seconds</span> <span class="o">=====================</span>
+</pre></div>
+</div>
+<p>By default each captured log message shows the module, line number, log level
+and message.</p>
+<p>If desired the log and date format can be specified to
+anything that the logging module supports by passing specific formatting options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">log</span><span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;</span><span class="si">%(asctime)s</span><span class="s2"> </span><span class="si">%(levelname)s</span><span class="s2"> </span><span class="si">%(message)s</span><span class="s2">&quot;</span> \
+        <span class="o">--</span><span class="n">log</span><span class="o">-</span><span class="n">date</span><span class="o">-</span><span class="nb">format</span><span class="o">=</span><span class="s2">&quot;%Y-%m-</span><span class="si">%d</span><span class="s2"> %H:%M:%S&quot;</span>
+</pre></div>
+</div>
+<p>Shows failed tests like so:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stdlog</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="mi">2010</span><span class="o">-</span><span class="mi">04</span><span class="o">-</span><span class="mi">10</span> <span class="mi">14</span><span class="p">:</span><span class="mi">48</span><span class="p">:</span><span class="mi">44</span> <span class="n">WARNING</span> <span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">logger</span>
+<span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stdout</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">stdout</span>
+<span class="o">-----------------------</span> <span class="n">Captured</span> <span class="n">stderr</span> <span class="n">call</span> <span class="o">----------------------</span>
+<span class="n">text</span> <span class="n">going</span> <span class="n">to</span> <span class="n">stderr</span>
+<span class="o">====================</span> <span class="mi">2</span> <span class="n">failed</span> <span class="ow">in</span> <span class="mf">0.02</span> <span class="n">seconds</span> <span class="o">=====================</span>
+</pre></div>
+</div>
+<p>These options can also be customized through <code class="docutils literal notranslate"><span class="pre">pytest.ini</span></code> file:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+<span class="na">log_format</span> <span class="o">=</span> <span class="s">%(asctime)s %(levelname)s %(message)s</span>
+<span class="na">log_date_format</span> <span class="o">=</span> <span class="s">%Y-%m-%d %H:%M:%S</span>
+</pre></div>
+</div>
+<p>Further it is possible to disable reporting of captured content (stdout,
+stderr and logs) on failed tests completely with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">show</span><span class="o">-</span><span class="n">capture</span><span class="o">=</span><span class="n">no</span>
+</pre></div>
+</div>
+<div class="section" id="caplog-fixture">
+<h2>caplog fixture<a class="headerlink" href="#caplog-fixture" title="Permalink to this headline">¶</a></h2>
+<p>Inside tests it is possible to change the log level for the captured log
+messages.  This is supported by the <code class="docutils literal notranslate"><span class="pre">caplog</span></code> fixture:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_foo</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">caplog</span><span class="o">.</span><span class="n">set_level</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>By default the level is set on the root logger,
+however as a convenience it is also possible to set the log level of any
+logger:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_foo</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">caplog</span><span class="o">.</span><span class="n">set_level</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="s1">&#39;root.baz&#39;</span><span class="p">)</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>The log levels set are restored automatically at the end of the test.</p>
+<p>It is also possible to use a context manager to temporarily change the log
+level inside a <code class="docutils literal notranslate"><span class="pre">with</span></code> block:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_bar</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">caplog</span><span class="o">.</span><span class="n">at_level</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>Again, by default the level of the root logger is affected but the level of any
+logger can be changed instead with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_bar</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="k">with</span> <span class="n">caplog</span><span class="o">.</span><span class="n">at_level</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">CRITICAL</span><span class="p">,</span> <span class="n">logger</span><span class="o">=</span><span class="s1">&#39;root.baz&#39;</span><span class="p">):</span>
+        <span class="k">pass</span>
+</pre></div>
+</div>
+<p>Lastly all the logs sent to the logger during the test run are made available on
+the fixture in the form of both the <code class="docutils literal notranslate"><span class="pre">logging.LogRecord</span></code> instances and the final log text.
+This is useful for when you want to assert on the contents of a message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_baz</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">func_under_test</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">record</span> <span class="ow">in</span> <span class="n">caplog</span><span class="o">.</span><span class="n">records</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">record</span><span class="o">.</span><span class="n">levelname</span> <span class="o">!=</span> <span class="s1">&#39;CRITICAL&#39;</span>
+    <span class="k">assert</span> <span class="s1">&#39;wally&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">caplog</span><span class="o">.</span><span class="n">text</span>
+</pre></div>
+</div>
+<p>For all the available attributes of the log records see the
+<code class="docutils literal notranslate"><span class="pre">logging.LogRecord</span></code> class.</p>
+<p>You can also resort to <code class="docutils literal notranslate"><span class="pre">record_tuples</span></code> if all you want to do is to ensure,
+that certain messages have been logged under a given logger name with a given
+severity and message:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_foo</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">()</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;boo </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;arg&#39;</span><span class="p">)</span>
+
+    <span class="k">assert</span> <span class="n">caplog</span><span class="o">.</span><span class="n">record_tuples</span> <span class="o">==</span> <span class="p">[</span>
+        <span class="p">(</span><span class="s1">&#39;root&#39;</span><span class="p">,</span> <span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">,</span> <span class="s1">&#39;boo arg&#39;</span><span class="p">),</span>
+    <span class="p">]</span>
+</pre></div>
+</div>
+<p>You can call <code class="docutils literal notranslate"><span class="pre">caplog.clear()</span></code> to reset the captured log records in a test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_something_with_clearing_records</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">some_method_that_creates_log_records</span><span class="p">()</span>
+    <span class="n">caplog</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+    <span class="n">your_test_method</span><span class="p">()</span>
+    <span class="k">assert</span> <span class="p">[</span><span class="s1">&#39;Foo&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="p">[</span><span class="n">rec</span><span class="o">.</span><span class="n">message</span> <span class="k">for</span> <span class="n">rec</span> <span class="ow">in</span> <span class="n">caplog</span><span class="o">.</span><span class="n">records</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">caplog.records</span></code> attribute contains records from the current stage only, so
+inside the <code class="docutils literal notranslate"><span class="pre">setup</span></code> phase it contains only setup logs, same with the <code class="docutils literal notranslate"><span class="pre">call</span></code> and
+<code class="docutils literal notranslate"><span class="pre">teardown</span></code> phases.</p>
+<p>To access logs from other stages, use the <code class="docutils literal notranslate"><span class="pre">caplog.get_records(when)</span></code> method. As an example,
+if you want to make sure that tests which use a certain fixture never log any warnings, you can inspect
+the records for the <code class="docutils literal notranslate"><span class="pre">setup</span></code> and <code class="docutils literal notranslate"><span class="pre">call</span></code> stages during teardown like so:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">window</span><span class="p">(</span><span class="n">caplog</span><span class="p">):</span>
+    <span class="n">window</span> <span class="o">=</span> <span class="n">create_window</span><span class="p">()</span>
+    <span class="k">yield</span> <span class="n">window</span>
+    <span class="k">for</span> <span class="n">when</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;setup&quot;</span><span class="p">,</span> <span class="s2">&quot;call&quot;</span><span class="p">):</span>
+        <span class="n">messages</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">x</span><span class="o">.</span><span class="n">message</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">caplog</span><span class="o">.</span><span class="n">get_records</span><span class="p">(</span><span class="n">when</span><span class="p">)</span> <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">level</span> <span class="o">==</span> <span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">messages</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span>
+                <span class="s2">&quot;warning messages encountered during testing: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">messages</span><span class="p">)</span>
+            <span class="p">)</span>
+</pre></div>
+</div>
+<p>The full API is available at <a class="reference internal" href="reference.html#_pytest.logging.LogCaptureFixture" title="_pytest.logging.LogCaptureFixture"><code class="xref py py-class docutils literal notranslate"><span class="pre">_pytest.logging.LogCaptureFixture</span></code></a>.</p>
+</div>
+<div class="section" id="live-logs">
+<span id="id2"></span><h2>Live Logs<a class="headerlink" href="#live-logs" title="Permalink to this headline">¶</a></h2>
+<p>By setting the <code class="xref std std-confval docutils literal notranslate"><span class="pre">log_cli</span></code> configuration option to <code class="docutils literal notranslate"><span class="pre">true</span></code>, pytest will output
+logging records as they are emitted directly into the console.</p>
+<p>You can specify the logging level for which log records with equal or higher
+level are printed to the console by passing <code class="docutils literal notranslate"><span class="pre">--log-cli-level</span></code>. This setting
+accepts the logging level names as seen in python’s documentation or an integer
+as the logging level num.</p>
+<p>Additionally, you can also specify <code class="docutils literal notranslate"><span class="pre">--log-cli-format</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--log-cli-date-format</span></code> which mirror and default to <code class="docutils literal notranslate"><span class="pre">--log-format</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--log-date-format</span></code> if not provided, but are applied only to the console
+logging handler.</p>
+<p>All of the CLI log options can also be set in the configuration INI file. The
+option names are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">log_cli_level</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">log_cli_format</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">log_cli_date_format</span></code></li>
+</ul>
+<p>If you need to record the whole test suite logging calls to a file, you can pass
+<code class="docutils literal notranslate"><span class="pre">--log-file=/path/to/log/file</span></code>. This log file is opened in write mode which
+means that it will be overwritten at each run tests session.</p>
+<p>You can also specify the logging level for the log file by passing
+<code class="docutils literal notranslate"><span class="pre">--log-file-level</span></code>. This setting accepts the logging level names as seen in
+python’s documentation(ie, uppercased level names) or an integer as the logging
+level num.</p>
+<p>Additionally, you can also specify <code class="docutils literal notranslate"><span class="pre">--log-file-format</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--log-file-date-format</span></code> which are equal to <code class="docutils literal notranslate"><span class="pre">--log-format</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--log-date-format</span></code> but are applied to the log file logging handler.</p>
+<p>All of the log file options can also be set in the configuration INI file. The
+option names are:</p>
+<ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">log_file</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">log_file_level</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">log_file_format</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">log_file_date_format</span></code></li>
+</ul>
+</div>
+<div class="section" id="release-notes">
+<span id="log-release-notes"></span><h2>Release notes<a class="headerlink" href="#release-notes" title="Permalink to this headline">¶</a></h2>
+<p>This feature was introduced as a drop-in replacement for the <a class="reference external" href="https://pypi.org/project/pytest-catchlog/">pytest-catchlog</a> plugin and they conflict
+with each other. The backward compatibility API with <code class="docutils literal notranslate"><span class="pre">pytest-capturelog</span></code>
+has been dropped when this feature was introduced, so if for that reason you
+still need <code class="docutils literal notranslate"><span class="pre">pytest-catchlog</span></code> you can disable the internal feature by
+adding to your <code class="docutils literal notranslate"><span class="pre">pytest.ini</span></code>:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+    <span class="na">addopts</span><span class="o">=</span><span class="s">-p no:logging</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="incompatible-changes-in-pytest-3-4">
+<span id="log-changes-3-4"></span><h2>Incompatible changes in pytest 3.4<a class="headerlink" href="#incompatible-changes-in-pytest-3-4" title="Permalink to this headline">¶</a></h2>
+<p>This feature was introduced in <code class="docutils literal notranslate"><span class="pre">3.3</span></code> and some <strong>incompatible changes</strong> have been
+made in <code class="docutils literal notranslate"><span class="pre">3.4</span></code> after community feedback:</p>
+<ul class="simple">
+<li>Log levels are no longer changed unless explicitly requested by the <a class="reference internal" href="reference.html#confval-log_level"><code class="xref std std-confval docutils literal notranslate"><span class="pre">log_level</span></code></a> configuration
+or <code class="docutils literal notranslate"><span class="pre">--log-level</span></code> command-line options. This allows users to configure logger objects themselves.</li>
+<li><a class="reference internal" href="#live-logs"><span class="std std-ref">Live Logs</span></a> is now disabled by default and can be enabled setting the
+<code class="xref std std-confval docutils literal notranslate"><span class="pre">log_cli</span></code> configuration option to <code class="docutils literal notranslate"><span class="pre">true</span></code>. When enabled, the verbosity is increased so logging for each
+test is visible.</li>
+<li><a class="reference internal" href="#live-logs"><span class="std std-ref">Live Logs</span></a> are now sent to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code> and no longer require the <code class="docutils literal notranslate"><span class="pre">-s</span></code> command-line option
+to work.</li>
+</ul>
+<p>If you want to partially restore the logging behavior of version <code class="docutils literal notranslate"><span class="pre">3.3</span></code>, you can add this options to your <code class="docutils literal notranslate"><span class="pre">ini</span></code>
+file:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+<span class="na">log_cli</span><span class="o">=</span><span class="s">true</span>
+<span class="na">log_level</span><span class="o">=</span><span class="s">NOTSET</span>
+</pre></div>
+</div>
+<p>More details about the discussion that lead to this changes can be read in
+issue <a class="reference external" href="https://github.com/pytest-dev/pytest/issues/3013">#3013</a>.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="reference.html" title="Reference"
+             >next</a></li>
+        <li class="right" >
+          <a href="writing_plugins.html" title="Writing plugins"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

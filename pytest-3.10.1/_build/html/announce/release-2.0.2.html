@@ -1,0 +1,153 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>py.test 2.0.2: bug fixes, improved xfail/skip expressions, speed ups &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="py.test 2.0.1: bug fixes" href="release-2.0.1.html" />
+    <link rel="prev" title="py.test 2.0.3: bug fixes and speed ups" href="release-2.0.3.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.0.1.html" title="py.test 2.0.1: bug fixes"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.0.3.html" title="py.test 2.0.3: bug fixes and speed ups"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="py-test-2-0-2-bug-fixes-improved-xfail-skip-expressions-speed-ups">
+<h1>py.test 2.0.2: bug fixes, improved xfail/skip expressions, speed ups<a class="headerlink" href="#py-test-2-0-2-bug-fixes-improved-xfail-skip-expressions-speed-ups" title="Permalink to this headline">¶</a></h1>
+<p>Welcome to pytest-2.0.2, a maintenance and bug fix release of pytest,
+a mature testing tool for Python, supporting CPython 2.4-3.2, Jython
+and latest PyPy interpreters.  See the extensive docs with tested examples here:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/">http://pytest.org/</a></div></blockquote>
+<p>If you want to install or upgrade pytest, just type one of:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span> <span class="c1"># or</span>
+<span class="n">easy_install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Many thanks to all issue reporters and people asking questions
+or complaining, particularly Jurko for his insistence,
+Laura, Victor and Brianna for helping with improving
+and Ronny for his general advise.</p>
+<p>best,
+holger krekel</p>
+<div class="section" id="changes-between-2-0-1-and-2-0-2">
+<h2>Changes between 2.0.1 and 2.0.2<a class="headerlink" href="#changes-between-2-0-1-and-2-0-2" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">tackle issue32 - speed up test runs of very quick test functions
+by reducing the relative overhead</p>
+</li>
+<li><p class="first">fix issue30 - extended xfail/skipif handling and improved reporting.
+If you have a syntax error in your skip/xfail
+expressions you now get nice error reports.</p>
+<p>Also you can now access module globals from xfail/skipif
+expressions so that this for example works now:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">mymodule</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skipif</span><span class="p">(</span><span class="s2">&quot;mymodule.__version__[0] == &quot;</span><span class="mi">1</span><span class="s2">&quot;)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>This will not run the test function if the module’s version string
+does not start with a “1”.  Note that specifying a string instead
+of a boolean expressions allows py.test to report meaningful information
+when summarizing a test run as to what conditions lead to skipping
+(or xfail-ing) tests.</p>
+</li>
+<li><p class="first">fix issue28 - setup_method and pytest_generate_tests work together
+The setup_method fixture method now gets called also for
+test function invocations generated from the pytest_generate_tests
+hook.</p>
+</li>
+<li><p class="first">fix issue27 - collectonly and keyword-selection (-k) now work together
+Also, if you do “py.test –collectonly -q” you now get a flat list
+of test ids that you can use to paste to the py.test commandline
+in order to execute a particular test.</p>
+</li>
+<li><p class="first">fix issue25 avoid reported problems with –pdb and python3.2/encodings output</p>
+</li>
+<li><p class="first">fix issue23 - tmpdir argument now works on Python3.2 and WindowsXP
+Starting with Python3.2 os.symlink may be supported. By requiring
+a newer py lib version the py.path.local() implementation acknowledges
+this.</p>
+</li>
+<li><p class="first">fixed typos in the docs (thanks Victor Garcia, Brianna Laugher) and particular
+thanks to Laura Creighton who also reviewed parts of the documentation.</p>
+</li>
+<li><p class="first">fix slightly wrong output of verbose progress reporting for classes
+(thanks Amaury)</p>
+</li>
+<li><p class="first">more precise (avoiding of) deprecation warnings for node.Class|Function accesses</p>
+</li>
+<li><p class="first">avoid std unittest assertion helper code in tracebacks (thanks Ronny)</p>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.0.1.html" title="py.test 2.0.1: bug fixes"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.0.3.html" title="py.test 2.0.3: bug fixes and speed ups"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

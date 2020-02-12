@@ -1,0 +1,571 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Usage and Invocations &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using pytest with an existing test suite" href="existingtestsuite.html" />
+    <link rel="prev" title="Installation and Getting Started" href="getting-started.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="existingtestsuite.html" title="Using pytest with an existing test suite"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="getting-started.html" title="Installation and Getting Started"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="usage-and-invocations">
+<span id="usage"></span><h1>Usage and Invocations<a class="headerlink" href="#usage-and-invocations" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="calling-pytest-through-python-m-pytest">
+<span id="cmdline"></span><h2>Calling pytest through <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pytest</span></code><a class="headerlink" href="#calling-pytest-through-python-m-pytest" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.0.</span></p>
+</div>
+<p>You can invoke testing through the Python interpreter from the command line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">pytest</span> <span class="p">[</span><span class="o">...</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This is almost equivalent to invoking the command line script <code class="docutils literal notranslate"><span class="pre">pytest</span> <span class="pre">[...]</span></code>
+directly, except that calling via <code class="docutils literal notranslate"><span class="pre">python</span></code> will also add the current directory to <code class="docutils literal notranslate"><span class="pre">sys.path</span></code>.</p>
+</div>
+<div class="section" id="possible-exit-codes">
+<h2>Possible exit codes<a class="headerlink" href="#possible-exit-codes" title="Permalink to this headline">¶</a></h2>
+<p>Running <code class="docutils literal notranslate"><span class="pre">pytest</span></code> can result in six different exit codes:</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Exit code 0:</th><td class="field-body">All tests were collected and passed successfully</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Exit code 1:</th><td class="field-body">Tests were collected and run but some of the tests failed</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Exit code 2:</th><td class="field-body">Test execution was interrupted by the user</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Exit code 3:</th><td class="field-body">Internal error happened while executing tests</td>
+</tr>
+<tr class="field-odd field"><th class="field-name">Exit code 4:</th><td class="field-body">pytest command line usage error</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Exit code 5:</th><td class="field-body">No tests were collected</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section" id="getting-help-on-version-option-names-environment-variables">
+<h2>Getting help on version, option names, environment variables<a class="headerlink" href="#getting-help-on-version-option-names-environment-variables" title="Permalink to this headline">¶</a></h2>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">version</span>   <span class="c1"># shows where pytest was imported from</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">fixtures</span>  <span class="c1"># show available builtin function arguments</span>
+<span class="n">pytest</span> <span class="o">-</span><span class="n">h</span> <span class="o">|</span> <span class="o">--</span><span class="n">help</span> <span class="c1"># show help on command line and config file options</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="stopping-after-the-first-or-n-failures">
+<span id="maxfail"></span><h2>Stopping after the first (or N) failures<a class="headerlink" href="#stopping-after-the-first-or-n-failures" title="Permalink to this headline">¶</a></h2>
+<p>To stop the testing process after the first (N) failures:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">x</span>            <span class="c1"># stop after first failure</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">maxfail</span><span class="o">=</span><span class="mi">2</span>    <span class="c1"># stop after two failures</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="specifying-tests-selecting-tests">
+<span id="select-tests"></span><h2>Specifying tests / selecting tests<a class="headerlink" href="#specifying-tests-selecting-tests" title="Permalink to this headline">¶</a></h2>
+<p>Pytest supports several ways to run and select tests from the command-line.</p>
+<p><strong>Run tests in a module</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">test_mod</span><span class="o">.</span><span class="n">py</span>
+</pre></div>
+</div>
+<p><strong>Run tests in a directory</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">testing</span><span class="o">/</span>
+</pre></div>
+</div>
+<p><strong>Run tests by keyword expressions</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">k</span> <span class="s2">&quot;MyClass and not method&quot;</span>
+</pre></div>
+</div>
+<p>This will run tests which contain names that match the given <em>string expression</em>, which can
+include Python operators that use filenames, class names and function names as variables.
+The example above will run <code class="docutils literal notranslate"><span class="pre">TestMyClass.test_something</span></code>  but not <code class="docutils literal notranslate"><span class="pre">TestMyClass.test_method_simple</span></code>.</p>
+<p id="nodeids"><strong>Run tests by node ids</strong></p>
+<p>Each collected test is assigned a unique <code class="docutils literal notranslate"><span class="pre">nodeid</span></code> which consist of the module filename followed
+by specifiers like class names, function names and parameters from parametrization, separated by <code class="docutils literal notranslate"><span class="pre">::</span></code> characters.</p>
+<p>To run a specific test within a module:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">test_mod</span><span class="o">.</span><span class="n">py</span><span class="p">::</span><span class="n">test_func</span>
+</pre></div>
+</div>
+<p>Another example specifying a test method in the command line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="n">test_mod</span><span class="o">.</span><span class="n">py</span><span class="p">::</span><span class="n">TestClass</span><span class="p">::</span><span class="n">test_method</span>
+</pre></div>
+</div>
+<p><strong>Run tests by marker expressions</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">m</span> <span class="n">slow</span>
+</pre></div>
+</div>
+<p>Will run all tests which are decorated with the <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.slow</span></code> decorator.</p>
+<p>For more information see <a class="reference internal" href="mark.html#mark"><span class="std std-ref">marks</span></a>.</p>
+<p><strong>Run tests from packages</strong></p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">pyargs</span> <span class="n">pkg</span><span class="o">.</span><span class="n">testing</span>
+</pre></div>
+</div>
+<p>This will import <code class="docutils literal notranslate"><span class="pre">pkg.testing</span></code> and use its filesystem location to find and run tests from.</p>
+</div>
+<div class="section" id="modifying-python-traceback-printing">
+<h2>Modifying Python traceback printing<a class="headerlink" href="#modifying-python-traceback-printing" title="Permalink to this headline">¶</a></h2>
+<p>Examples for modifying traceback printing:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">showlocals</span> <span class="c1"># show local variables in tracebacks</span>
+<span class="n">pytest</span> <span class="o">-</span><span class="n">l</span>           <span class="c1"># show local variables (shortcut)</span>
+
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">auto</span>    <span class="c1"># (default) &#39;long&#39; tracebacks for the first and last</span>
+                     <span class="c1"># entry, but &#39;short&#39; style for the other entries</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">long</span>    <span class="c1"># exhaustive, informative traceback formatting</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">short</span>   <span class="c1"># shorter traceback format</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">line</span>    <span class="c1"># only one line per failure</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">native</span>  <span class="c1"># Python standard library formatting</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">no</span>      <span class="c1"># no traceback at all</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">--full-trace</span></code> causes very long traces to be printed on error (longer
+than <code class="docutils literal notranslate"><span class="pre">--tb=long</span></code>). It also ensures that a stack trace is printed on
+<strong>KeyboardInterrupt</strong> (Ctrl+C).
+This is very useful if the tests are taking too long and you interrupt them
+with Ctrl+C to find out where the tests are <em>hanging</em>. By default no output
+will be shown (because KeyboardInterrupt is caught by pytest). By using this
+option you make sure a trace is shown.</p>
+</div>
+<div class="section" id="detailed-summary-report">
+<span id="pytest-detailed-failed-tests-usage"></span><h2>Detailed summary report<a class="headerlink" href="#detailed-summary-report" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.9.</span></p>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">-r</span></code> flag can be used to display test results summary at the end of the test session,
+making it easy in large test suites to get a clear picture of all failures, skips, xfails, etc.</p>
+<p>Example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -ra
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">-r</span></code> options accepts a number of characters after it, with <code class="docutils literal notranslate"><span class="pre">a</span></code> used above meaning “all except passes”.</p>
+<p>Here is the full list of available characters that can be used:</p>
+<blockquote>
+<div><ul class="simple">
+<li><code class="docutils literal notranslate"><span class="pre">f</span></code> - failed</li>
+<li><code class="docutils literal notranslate"><span class="pre">E</span></code> - error</li>
+<li><code class="docutils literal notranslate"><span class="pre">s</span></code> - skipped</li>
+<li><code class="docutils literal notranslate"><span class="pre">x</span></code> - xfailed</li>
+<li><code class="docutils literal notranslate"><span class="pre">X</span></code> - xpassed</li>
+<li><code class="docutils literal notranslate"><span class="pre">p</span></code> - passed</li>
+<li><code class="docutils literal notranslate"><span class="pre">P</span></code> - passed with output</li>
+<li><code class="docutils literal notranslate"><span class="pre">a</span></code> - all except <code class="docutils literal notranslate"><span class="pre">pP</span></code></li>
+</ul>
+</div></blockquote>
+<p>More than one character can be used, so for example to only see failed and skipped tests, you can execute:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -rfs
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+</div>
+<div class="section" id="dropping-to-pdb-python-debugger-on-failures">
+<span id="pdb-option"></span><h2>Dropping to <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a> (Python Debugger) on failures<a class="headerlink" href="#dropping-to-pdb-python-debugger-on-failures" title="Permalink to this headline">¶</a></h2>
+<p>Python comes with a builtin Python debugger called <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a>.  <code class="docutils literal notranslate"><span class="pre">pytest</span></code>
+allows one to drop into the <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a> prompt via a command line option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">pdb</span>
+</pre></div>
+</div>
+<p>This will invoke the Python debugger on every failure (or KeyboardInterrupt).
+Often you might only want to do this for the first failing test to understand
+a certain failure situation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">x</span> <span class="o">--</span><span class="n">pdb</span>   <span class="c1"># drop to PDB on first failure, then end test session</span>
+<span class="n">pytest</span> <span class="o">--</span><span class="n">pdb</span> <span class="o">--</span><span class="n">maxfail</span><span class="o">=</span><span class="mi">3</span>  <span class="c1"># drop to PDB for first three failures</span>
+</pre></div>
+</div>
+<p>Note that on any failure the exception information is stored on
+<code class="docutils literal notranslate"><span class="pre">sys.last_value</span></code>, <code class="docutils literal notranslate"><span class="pre">sys.last_type</span></code> and <code class="docutils literal notranslate"><span class="pre">sys.last_traceback</span></code>. In
+interactive use, this allows one to drop into postmortem debugging with
+any debug tool. One can also manually access the exception information,
+for example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sys</span><span class="o">.</span><span class="n">last_traceback</span><span class="o">.</span><span class="n">tb_lineno</span>
+<span class="go">42</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sys</span><span class="o">.</span><span class="n">last_value</span>
+<span class="go">AssertionError(&#39;assert result == &quot;ok&quot;&#39;,)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="dropping-to-pdb-python-debugger-at-the-start-of-a-test">
+<span id="trace-option"></span><h2>Dropping to <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a> (Python Debugger) at the start of a test<a class="headerlink" href="#dropping-to-pdb-python-debugger-at-the-start-of-a-test" title="Permalink to this headline">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">pytest</span></code> allows one to drop into the <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a> prompt immediately at the start of each test via a command line option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">trace</span>
+</pre></div>
+</div>
+<p>This will invoke the Python debugger at the start of every test.</p>
+</div>
+<div class="section" id="setting-breakpoints">
+<span id="breakpoints"></span><h2>Setting breakpoints<a class="headerlink" href="#setting-breakpoints" title="Permalink to this headline">¶</a></h2>
+<p>To set a breakpoint in your code use the native Python <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">pdb;pdb.set_trace()</span></code> call
+in your code and pytest automatically disables its output capture for that test:</p>
+<ul class="simple">
+<li>Output capture in other tests is not affected.</li>
+<li>Any prior test output that has already been captured and will be processed as
+such.</li>
+<li>Any later output produced within the same test will not be captured and will
+instead get sent directly to <code class="docutils literal notranslate"><span class="pre">sys.stdout</span></code>. Note that this holds true even
+for test output occurring after you exit the interactive <a class="reference external" href="http://docs.python.org/library/pdb.html">PDB</a> tracing session
+and continue with the regular test run.</li>
+</ul>
+</div>
+<div class="section" id="using-the-builtin-breakpoint-function">
+<span id="breakpoint-builtin"></span><h2>Using the builtin breakpoint function<a class="headerlink" href="#using-the-builtin-breakpoint-function" title="Permalink to this headline">¶</a></h2>
+<p>Python 3.7 introduces a builtin <code class="docutils literal notranslate"><span class="pre">breakpoint()</span></code> function.
+Pytest supports the use of <code class="docutils literal notranslate"><span class="pre">breakpoint()</span></code> with the following behaviours:</p>
+<blockquote>
+<div><ul class="simple">
+<li>When <code class="docutils literal notranslate"><span class="pre">breakpoint()</span></code> is called and <code class="docutils literal notranslate"><span class="pre">PYTHONBREAKPOINT</span></code> is set to the default value, pytest will use the custom internal PDB trace UI instead of the system default <code class="docutils literal notranslate"><span class="pre">Pdb</span></code>.</li>
+<li>When tests are complete, the system will default back to the system <code class="docutils literal notranslate"><span class="pre">Pdb</span></code> trace UI.</li>
+<li>With <code class="docutils literal notranslate"><span class="pre">--pdb</span></code> passed to pytest, the custom internal Pdb trace UI is used with both <code class="docutils literal notranslate"><span class="pre">breakpoint()</span></code> and failed tests/unhandled exceptions.</li>
+<li><code class="docutils literal notranslate"><span class="pre">--pdbcls</span></code> can be used to specify a custom debugger class.</li>
+</ul>
+</div></blockquote>
+</div>
+<div class="section" id="profiling-test-execution-duration">
+<span id="durations"></span><h2>Profiling test execution duration<a class="headerlink" href="#profiling-test-execution-duration" title="Permalink to this headline">¶</a></h2>
+<p>To get a list of the slowest 10 test durations:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">durations</span><span class="o">=</span><span class="mi">10</span>
+</pre></div>
+</div>
+<p>By default, pytest will not show test durations that are too small (&lt;0.01s) unless <code class="docutils literal notranslate"><span class="pre">-vv</span></code> is passed on the command-line.</p>
+</div>
+<div class="section" id="creating-junitxml-format-files">
+<h2>Creating JUnitXML format files<a class="headerlink" href="#creating-junitxml-format-files" title="Permalink to this headline">¶</a></h2>
+<p>To create result files which can be read by <a class="reference external" href="http://jenkins-ci.org/">Jenkins</a> or other Continuous
+integration servers, use this invocation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">junitxml</span><span class="o">=</span><span class="n">path</span>
+</pre></div>
+</div>
+<p>to create an XML file at <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.1.</span></p>
+</div>
+<p>To set the name of the root test suite xml item, you can configure the <code class="docutils literal notranslate"><span class="pre">junit_suite_name</span></code> option in your config file:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[pytest]</span>
+<span class="na">junit_suite_name</span> <span class="o">=</span> <span class="s">my_suite</span>
+</pre></div>
+</div>
+<div class="section" id="record-property">
+<span id="record-property-example"></span><h3>record_property<a class="headerlink" href="#record-property" title="Permalink to this headline">¶</a></h3>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.8.</span></p>
+</div>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 3.5: </span>Fixture renamed from <code class="docutils literal notranslate"><span class="pre">record_xml_property</span></code> to <code class="docutils literal notranslate"><span class="pre">record_property</span></code> as user
+properties are now available to all reporters.
+<code class="docutils literal notranslate"><span class="pre">record_xml_property</span></code> is now deprecated.</p>
+</div>
+<p>If you want to log additional information for a test, you can use the
+<code class="docutils literal notranslate"><span class="pre">record_property</span></code> fixture:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_function</span><span class="p">(</span><span class="n">record_property</span><span class="p">):</span>
+    <span class="n">record_property</span><span class="p">(</span><span class="s2">&quot;example_key&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>This will add an extra property <code class="docutils literal notranslate"><span class="pre">example_key=&quot;1&quot;</span></code> to the generated
+<code class="docutils literal notranslate"><span class="pre">testcase</span></code> tag:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;testcase</span> <span class="na">classname=</span><span class="s">&quot;test_function&quot;</span> <span class="na">file=</span><span class="s">&quot;test_function.py&quot;</span> <span class="na">line=</span><span class="s">&quot;0&quot;</span> <span class="na">name=</span><span class="s">&quot;test_function&quot;</span> <span class="na">time=</span><span class="s">&quot;0.0009&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;properties&gt;</span>
+    <span class="nt">&lt;property</span> <span class="na">name=</span><span class="s">&quot;example_key&quot;</span> <span class="na">value=</span><span class="s">&quot;1&quot;</span> <span class="nt">/&gt;</span>
+  <span class="nt">&lt;/properties&gt;</span>
+<span class="nt">&lt;/testcase&gt;</span>
+</pre></div>
+</div>
+<p>Alternatively, you can integrate this functionality with custom markers:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_collection_modifyitems</span><span class="p">(</span><span class="n">session</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">items</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">marker</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">iter_markers</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;test_id&quot;</span><span class="p">):</span>
+            <span class="n">test_id</span> <span class="o">=</span> <span class="n">marker</span><span class="o">.</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">item</span><span class="o">.</span><span class="n">user_properties</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="s2">&quot;test_id&quot;</span><span class="p">,</span> <span class="n">test_id</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>And in your tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_function.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">test_id</span><span class="p">(</span><span class="mi">1501</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Will result in:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;testcase</span> <span class="na">classname=</span><span class="s">&quot;test_function&quot;</span> <span class="na">file=</span><span class="s">&quot;test_function.py&quot;</span> <span class="na">line=</span><span class="s">&quot;0&quot;</span> <span class="na">name=</span><span class="s">&quot;test_function&quot;</span> <span class="na">time=</span><span class="s">&quot;0.0009&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;properties&gt;</span>
+    <span class="nt">&lt;property</span> <span class="na">name=</span><span class="s">&quot;test_id&quot;</span> <span class="na">value=</span><span class="s">&quot;1501&quot;</span> <span class="nt">/&gt;</span>
+  <span class="nt">&lt;/properties&gt;</span>
+<span class="nt">&lt;/testcase&gt;</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">record_property</span></code> is an experimental feature and may change in the future.</p>
+<p class="last">Also please note that using this feature will break any schema verification.
+This might be a problem when used with some CI servers.</p>
+</div>
+</div>
+<div class="section" id="record-xml-attribute">
+<h3>record_xml_attribute<a class="headerlink" href="#record-xml-attribute" title="Permalink to this headline">¶</a></h3>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.4.</span></p>
+</div>
+<p>To add an additional xml attribute to a testcase element, you can use
+<code class="docutils literal notranslate"><span class="pre">record_xml_attribute</span></code> fixture. This can also be used to override existing values:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">test_function</span><span class="p">(</span><span class="n">record_xml_attribute</span><span class="p">):</span>
+    <span class="n">record_xml_attribute</span><span class="p">(</span><span class="s2">&quot;assertions&quot;</span><span class="p">,</span> <span class="s2">&quot;REQ-1234&quot;</span><span class="p">)</span>
+    <span class="n">record_xml_attribute</span><span class="p">(</span><span class="s2">&quot;classname&quot;</span><span class="p">,</span> <span class="s2">&quot;custom_classname&quot;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;hello world&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>Unlike <code class="docutils literal notranslate"><span class="pre">record_property</span></code>, this will not add a new child element.
+Instead, this will add an attribute <code class="docutils literal notranslate"><span class="pre">assertions=&quot;REQ-1234&quot;</span></code> inside the generated
+<code class="docutils literal notranslate"><span class="pre">testcase</span></code> tag and override the default <code class="docutils literal notranslate"><span class="pre">classname</span></code> with <code class="docutils literal notranslate"><span class="pre">&quot;classname=custom_classname&quot;</span></code>:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;testcase</span> <span class="na">classname=</span><span class="s">&quot;custom_classname&quot;</span> <span class="na">file=</span><span class="s">&quot;test_function.py&quot;</span> <span class="na">line=</span><span class="s">&quot;0&quot;</span> <span class="na">name=</span><span class="s">&quot;test_function&quot;</span> <span class="na">time=</span><span class="s">&quot;0.003&quot;</span> <span class="na">assertions=</span><span class="s">&quot;REQ-1234&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;system-out&gt;</span>
+        hello world
+    <span class="nt">&lt;/system-out&gt;</span>
+<span class="nt">&lt;/testcase&gt;</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p><code class="docutils literal notranslate"><span class="pre">record_xml_attribute</span></code> is an experimental feature, and its interface might be replaced
+by something more powerful and general in future versions. The
+functionality per-se will be kept, however.</p>
+<p>Using this over <code class="docutils literal notranslate"><span class="pre">record_xml_property</span></code> can help when using ci tools to parse the xml report.
+However, some parsers are quite strict about the elements and attributes that are allowed.
+Many tools use an xsd schema (like the example below) to validate incoming xml.
+Make sure you are using attribute names that are allowed by your parser.</p>
+<p>Below is the Scheme used by Jenkins to validate the XML report:</p>
+<div class="last highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;xs:element</span> <span class="na">name=</span><span class="s">&quot;testcase&quot;</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;xs:complexType&gt;</span>
+        <span class="nt">&lt;xs:sequence&gt;</span>
+            <span class="nt">&lt;xs:element</span> <span class="na">ref=</span><span class="s">&quot;skipped&quot;</span> <span class="na">minOccurs=</span><span class="s">&quot;0&quot;</span> <span class="na">maxOccurs=</span><span class="s">&quot;1&quot;</span><span class="nt">/&gt;</span>
+            <span class="nt">&lt;xs:element</span> <span class="na">ref=</span><span class="s">&quot;error&quot;</span> <span class="na">minOccurs=</span><span class="s">&quot;0&quot;</span> <span class="na">maxOccurs=</span><span class="s">&quot;unbounded&quot;</span><span class="nt">/&gt;</span>
+            <span class="nt">&lt;xs:element</span> <span class="na">ref=</span><span class="s">&quot;failure&quot;</span> <span class="na">minOccurs=</span><span class="s">&quot;0&quot;</span> <span class="na">maxOccurs=</span><span class="s">&quot;unbounded&quot;</span><span class="nt">/&gt;</span>
+            <span class="nt">&lt;xs:element</span> <span class="na">ref=</span><span class="s">&quot;system-out&quot;</span> <span class="na">minOccurs=</span><span class="s">&quot;0&quot;</span> <span class="na">maxOccurs=</span><span class="s">&quot;unbounded&quot;</span><span class="nt">/&gt;</span>
+            <span class="nt">&lt;xs:element</span> <span class="na">ref=</span><span class="s">&quot;system-err&quot;</span> <span class="na">minOccurs=</span><span class="s">&quot;0&quot;</span> <span class="na">maxOccurs=</span><span class="s">&quot;unbounded&quot;</span><span class="nt">/&gt;</span>
+        <span class="nt">&lt;/xs:sequence&gt;</span>
+        <span class="nt">&lt;xs:attribute</span> <span class="na">name=</span><span class="s">&quot;name&quot;</span> <span class="na">type=</span><span class="s">&quot;xs:string&quot;</span> <span class="na">use=</span><span class="s">&quot;required&quot;</span><span class="nt">/&gt;</span>
+        <span class="nt">&lt;xs:attribute</span> <span class="na">name=</span><span class="s">&quot;assertions&quot;</span> <span class="na">type=</span><span class="s">&quot;xs:string&quot;</span> <span class="na">use=</span><span class="s">&quot;optional&quot;</span><span class="nt">/&gt;</span>
+        <span class="nt">&lt;xs:attribute</span> <span class="na">name=</span><span class="s">&quot;time&quot;</span> <span class="na">type=</span><span class="s">&quot;xs:string&quot;</span> <span class="na">use=</span><span class="s">&quot;optional&quot;</span><span class="nt">/&gt;</span>
+        <span class="nt">&lt;xs:attribute</span> <span class="na">name=</span><span class="s">&quot;classname&quot;</span> <span class="na">type=</span><span class="s">&quot;xs:string&quot;</span> <span class="na">use=</span><span class="s">&quot;optional&quot;</span><span class="nt">/&gt;</span>
+        <span class="nt">&lt;xs:attribute</span> <span class="na">name=</span><span class="s">&quot;status&quot;</span> <span class="na">type=</span><span class="s">&quot;xs:string&quot;</span> <span class="na">use=</span><span class="s">&quot;optional&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;/xs:complexType&gt;</span>
+<span class="nt">&lt;/xs:element&gt;</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="logxml-add-global-property">
+<h3>LogXML: add_global_property<a class="headerlink" href="#logxml-add-global-property" title="Permalink to this headline">¶</a></h3>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.0.</span></p>
+</div>
+<p>If you want to add a properties node in the testsuite level, which may contains properties that are relevant
+to all testcases you can use <code class="docutils literal notranslate"><span class="pre">LogXML.add_global_properties</span></code></p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">log_global_env_facts</span><span class="p">(</span><span class="n">f</span><span class="p">):</span>
+
+    <span class="k">if</span> <span class="n">pytest</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">pluginmanager</span><span class="o">.</span><span class="n">hasplugin</span><span class="p">(</span><span class="s2">&quot;junitxml&quot;</span><span class="p">):</span>
+        <span class="n">my_junit</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">pytest</span><span class="o">.</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_xml&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+
+    <span class="n">my_junit</span><span class="o">.</span><span class="n">add_global_property</span><span class="p">(</span><span class="s2">&quot;ARCH&quot;</span><span class="p">,</span> <span class="s2">&quot;PPC&quot;</span><span class="p">)</span>
+    <span class="n">my_junit</span><span class="o">.</span><span class="n">add_global_property</span><span class="p">(</span><span class="s2">&quot;STORAGE_TYPE&quot;</span><span class="p">,</span> <span class="s2">&quot;CEPH&quot;</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">usefixtures</span><span class="p">(</span><span class="n">log_global_env_facts</span><span class="o">.</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">start_and_prepare_env</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+
+<span class="k">class</span> <span class="nc">TestMe</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">test_foo</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="kc">True</span>
+</pre></div>
+</div>
+<p>This will add a property node below the testsuite node to the generated xml:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;testsuite</span> <span class="na">errors=</span><span class="s">&quot;0&quot;</span> <span class="na">failures=</span><span class="s">&quot;0&quot;</span> <span class="na">name=</span><span class="s">&quot;pytest&quot;</span> <span class="na">skips=</span><span class="s">&quot;0&quot;</span> <span class="na">tests=</span><span class="s">&quot;1&quot;</span> <span class="na">time=</span><span class="s">&quot;0.006&quot;</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;properties&gt;</span>
+    <span class="nt">&lt;property</span> <span class="na">name=</span><span class="s">&quot;ARCH&quot;</span> <span class="na">value=</span><span class="s">&quot;PPC&quot;</span><span class="nt">/&gt;</span>
+    <span class="nt">&lt;property</span> <span class="na">name=</span><span class="s">&quot;STORAGE_TYPE&quot;</span> <span class="na">value=</span><span class="s">&quot;CEPH&quot;</span><span class="nt">/&gt;</span>
+  <span class="nt">&lt;/properties&gt;</span>
+  <span class="nt">&lt;testcase</span> <span class="na">classname=</span><span class="s">&quot;test_me.TestMe&quot;</span> <span class="na">file=</span><span class="s">&quot;test_me.py&quot;</span> <span class="na">line=</span><span class="s">&quot;16&quot;</span> <span class="na">name=</span><span class="s">&quot;test_foo&quot;</span> <span class="na">time=</span><span class="s">&quot;0.000243663787842&quot;</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/testsuite&gt;</span>
+</pre></div>
+</div>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">This is an experimental feature, and its interface might be replaced
+by something more powerful and general in future versions. The
+functionality per-se will be kept.</p>
+</div>
+</div>
+</div>
+<div class="section" id="creating-resultlog-format-files">
+<h2>Creating resultlog format files<a class="headerlink" href="#creating-resultlog-format-files" title="Permalink to this headline">¶</a></h2>
+<div class="deprecated">
+<p><span class="versionmodified">Deprecated since version 3.0: </span>This option is rarely used and is scheduled for removal in 4.0.</p>
+<p>An alternative for users which still need similar functionality is to use the
+<a class="reference external" href="https://pypi.org/project/pytest-tap/">pytest-tap</a> plugin which provides
+a stream of test data.</p>
+<p>If you have any concerns, please don’t hesitate to
+<a class="reference external" href="https://github.com/pytest-dev/pytest/issues">open an issue</a>.</p>
+</div>
+<p>To create plain-text machine-readable result files you can issue:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">resultlog</span><span class="o">=</span><span class="n">path</span>
+</pre></div>
+</div>
+<p>and look at the content at the <code class="docutils literal notranslate"><span class="pre">path</span></code> location.  Such files are used e.g.
+by the <a class="reference external" href="http://buildbot.pypy.org/summary">PyPy-test</a> web page to show test results over several revisions.</p>
+</div>
+<div class="section" id="sending-test-report-to-online-pastebin-service">
+<h2>Sending test report to online pastebin service<a class="headerlink" href="#sending-test-report-to-online-pastebin-service" title="Permalink to this headline">¶</a></h2>
+<p><strong>Creating a URL for each test failure</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">pastebin</span><span class="o">=</span><span class="n">failed</span>
+</pre></div>
+</div>
+<p>This will submit test run information to a remote Paste service and
+provide a URL for each failure.  You may select tests as usual or add
+for example <code class="docutils literal notranslate"><span class="pre">-x</span></code> if you only want to send one particular failure.</p>
+<p><strong>Creating a URL for a whole test session log</strong>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">--</span><span class="n">pastebin</span><span class="o">=</span><span class="nb">all</span>
+</pre></div>
+</div>
+<p>Currently only pasting to the <a class="reference external" href="http://bpaste.net">http://bpaste.net</a> service is implemented.</p>
+</div>
+<div class="section" id="disabling-plugins">
+<h2>Disabling plugins<a class="headerlink" href="#disabling-plugins" title="Permalink to this headline">¶</a></h2>
+<p>To disable loading specific plugins at invocation time, use the <code class="docutils literal notranslate"><span class="pre">-p</span></code> option
+together with the prefix <code class="docutils literal notranslate"><span class="pre">no:</span></code>.</p>
+<p>Example: to disable loading the plugin <code class="docutils literal notranslate"><span class="pre">doctest</span></code>, which is responsible for
+executing doctest tests from text files, invoke pytest like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span> <span class="o">-</span><span class="n">p</span> <span class="n">no</span><span class="p">:</span><span class="n">doctest</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="calling-pytest-from-python-code">
+<span id="pytest-main-usage"></span><h2>Calling pytest from Python code<a class="headerlink" href="#calling-pytest-from-python-code" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.0.</span></p>
+</div>
+<p>You can invoke <code class="docutils literal notranslate"><span class="pre">pytest</span></code> from Python code directly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>this acts as if you would call “pytest” from the command line.
+It will not raise <code class="docutils literal notranslate"><span class="pre">SystemExit</span></code> but return the exitcode instead.
+You can pass in options and arguments:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s1">&#39;-x&#39;</span><span class="p">,</span> <span class="s1">&#39;mytestdir&#39;</span><span class="p">])</span>
+</pre></div>
+</div>
+<p>You can specify additional plugins to <code class="docutils literal notranslate"><span class="pre">pytest.main</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of myinvoke.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="k">class</span> <span class="nc">MyPlugin</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">pytest_sessionfinish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;*** test run reporting finishing&quot;</span><span class="p">)</span>
+
+<span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">([</span><span class="s2">&quot;-qq&quot;</span><span class="p">],</span> <span class="n">plugins</span><span class="o">=</span><span class="p">[</span><span class="n">MyPlugin</span><span class="p">()])</span>
+</pre></div>
+</div>
+<p>Running it will show that <code class="docutils literal notranslate"><span class="pre">MyPlugin</span></code> was added and its
+hook was invoked:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ python myinvoke.py
+.                                                                    [100%]*** test run reporting finishing
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Calling <code class="docutils literal notranslate"><span class="pre">pytest.main()</span></code> will result in importing your tests and any modules
+that they import. Due to the caching mechanism of python’s import system,
+making subsequent calls to <code class="docutils literal notranslate"><span class="pre">pytest.main()</span></code> from the same process will not
+reflect changes to those files between the calls. For this reason, making
+multiple calls to <code class="docutils literal notranslate"><span class="pre">pytest.main()</span></code> from the same process (in order to re-run
+tests, for example) is not recommended.</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="existingtestsuite.html" title="Using pytest with an existing test suite"
+             >next</a></li>
+        <li class="right" >
+          <a href="getting-started.html" title="Installation and Getting Started"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

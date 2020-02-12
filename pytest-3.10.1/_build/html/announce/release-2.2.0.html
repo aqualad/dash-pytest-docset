@@ -1,0 +1,170 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>py.test 2.2.0: test marking++, parametrization++ and duration profiling &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="py.test 2.1.3: just some more fixes" href="release-2.1.3.html" />
+    <link rel="prev" title="pytest-2.2.1: bug fixes, perfect teardowns" href="release-2.2.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.1.3.html" title="py.test 2.1.3: just some more fixes"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.2.1.html" title="pytest-2.2.1: bug fixes, perfect teardowns"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="py-test-2-2-0-test-marking-parametrization-and-duration-profiling">
+<h1>py.test 2.2.0: test marking++, parametrization++ and duration profiling<a class="headerlink" href="#py-test-2-2-0-test-marking-parametrization-and-duration-profiling" title="Permalink to this headline">¶</a></h1>
+<p>pytest-2.2.0 is a test-suite compatible release of the popular
+py.test testing tool.  Plugins might need upgrades. It comes
+with these improvements:</p>
+<ul class="simple">
+<li>easier and more powerful parametrization of tests:<ul>
+<li>new &#64;pytest.mark.parametrize decorator to run tests with different arguments</li>
+<li>new metafunc.parametrize() API for parametrizing arguments independently</li>
+<li>see examples at <a class="reference external" href="http://pytest.org/latest/example/parametrize.html">http://pytest.org/latest/example/parametrize.html</a></li>
+<li>NOTE that parametrize() related APIs are still a bit experimental
+and might change in future releases.</li>
+</ul>
+</li>
+<li>improved handling of test markers and refined marking mechanism:<ul>
+<li>“-m markexpr” option for selecting tests according to their mark</li>
+<li>a new “markers” ini-variable for registering test markers for your project</li>
+<li>the new “–strict” bails out with an error if using unregistered markers.</li>
+<li>see examples at <a class="reference external" href="http://pytest.org/latest/example/markers.html">http://pytest.org/latest/example/markers.html</a></li>
+</ul>
+</li>
+<li>duration profiling: new “–duration=N” option showing the N slowest test
+execution or setup/teardown calls. This is most useful if you want to
+find out where your slowest test code is.</li>
+<li>also 2.2.0 performs more eager calling of teardown/finalizers functions
+resulting in better and more accurate reporting when they fail</li>
+</ul>
+<p>Besides there is the usual set of bug fixes along with a cleanup of
+pytest’s own test suite allowing it to run on a wider range of environments.</p>
+<p>For general information, see extensive docs with examples here:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/">http://pytest.org/</a></div></blockquote>
+<p>If you want to install or upgrade pytest you might just type:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span> <span class="c1"># or</span>
+<span class="n">easy_install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Thanks to Ronny Pfannschmidt, David Burns, Jeff Donner, Daniel Nouri, Alfredo Deza and all who gave feedback or sent bug reports.</p>
+<p>best,
+holger krekel</p>
+<div class="section" id="notes-on-incompatibility">
+<h2>notes on incompatibility<a class="headerlink" href="#notes-on-incompatibility" title="Permalink to this headline">¶</a></h2>
+<p>While test suites should work unchanged you might need to upgrade plugins:</p>
+<ul class="simple">
+<li>You need a new version of the pytest-xdist plugin (1.7) for distributing
+test runs.</li>
+<li>Other plugins might need an upgrade if they implement
+the <code class="docutils literal notranslate"><span class="pre">pytest_runtest_logreport</span></code> hook which now is called unconditionally
+for the setup/teardown fixture phases of a test. You may choose to
+ignore setup/teardown failures by inserting “if rep.when != ‘call’: return”
+or something similar. Note that most code probably “just” works because
+the hook was already called for failing setup/teardown phases of a test
+so a plugin should have been ready to grok such reports already.</li>
+</ul>
+</div>
+<div class="section" id="changes-between-2-1-3-and-2-2-0">
+<h2>Changes between 2.1.3 and 2.2.0<a class="headerlink" href="#changes-between-2-1-3-and-2-2-0" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>fix issue90: introduce eager tearing down of test items so that
+teardown function are called earlier.</li>
+<li>add an all-powerful metafunc.parametrize function which allows to
+parametrize test function arguments in multiple steps and therefore
+from independent plugins and places.</li>
+<li>add a &#64;pytest.mark.parametrize helper which allows to easily
+call a test function with different argument values.</li>
+<li>Add examples to the “parametrize” example page, including a quick port
+of Test scenarios and the new parametrize function and decorator.</li>
+<li>introduce registration for “pytest.mark.*” helpers via ini-files
+or through plugin hooks.  Also introduce a “–strict” option which
+will treat unregistered markers as errors
+allowing to avoid typos and maintain a well described set of markers
+for your test suite.  See examples at <a class="reference external" href="http://pytest.org/latest/mark.html">http://pytest.org/latest/mark.html</a>
+and its links.</li>
+<li>issue50: introduce “-m marker” option to select tests based on markers
+(this is a stricter and more predictable version of “-k” in that “-m”
+only matches complete markers and has more obvious rules for and/or
+semantics.</li>
+<li>new feature to help optimizing the speed of your tests:
+–durations=N option for displaying N slowest test calls
+and setup/teardown methods.</li>
+<li>fix issue87: –pastebin now works with python3</li>
+<li>fix issue89: –pdb with unexpected exceptions in doctest work more sensibly</li>
+<li>fix and cleanup pytest’s own test suite to not leak FDs</li>
+<li>fix issue83: link to generated funcarg list</li>
+<li>fix issue74: pyarg module names are now checked against imp.find_module false positives</li>
+<li>fix compatibility with twisted/trial-11.1.0 use cases</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.1.3.html" title="py.test 2.1.3: just some more fixes"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.2.1.html" title="pytest-2.2.1: bug fixes, perfect teardowns"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

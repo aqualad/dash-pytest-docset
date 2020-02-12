@@ -1,0 +1,885 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Basic patterns and examples &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Parametrizing tests" href="parametrize.html" />
+    <link rel="prev" title="Demo of Python failure reports with pytest" href="reportingdemo.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="parametrize.html" title="Parametrizing tests"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="reportingdemo.html" title="Demo of Python failure reports with pytest"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="basic-patterns-and-examples">
+<h1>Basic patterns and examples<a class="headerlink" href="#basic-patterns-and-examples" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="pass-different-values-to-a-test-function-depending-on-command-line-options">
+<span id="request-example"></span><h2>Pass different values to a test function, depending on command line options<a class="headerlink" href="#pass-different-values-to-a-test-function-depending-on-command-line-options" title="Permalink to this headline">¶</a></h2>
+<p>Suppose we want to write a test that depends on a command line option.
+Here is a basic pattern to achieve this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_sample.py</span>
+<span class="k">def</span> <span class="nf">test_answer</span><span class="p">(</span><span class="n">cmdopt</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">cmdopt</span> <span class="o">==</span> <span class="s2">&quot;type1&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;first&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">cmdopt</span> <span class="o">==</span> <span class="s2">&quot;type2&quot;</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;second&quot;</span><span class="p">)</span>
+    <span class="k">assert</span> <span class="mi">0</span>  <span class="c1"># to see what was printed</span>
+</pre></div>
+</div>
+<p>For this to work we need to add a command line option and
+provide the <code class="docutils literal notranslate"><span class="pre">cmdopt</span></code> through a <a class="reference internal" href="../fixture.html#fixture-function"><span class="std std-ref">fixture function</span></a>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--cmdopt&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="s2">&quot;type1&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;my option: type1 or type2&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">cmdopt</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">request</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">getoption</span><span class="p">(</span><span class="s2">&quot;--cmdopt&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Let’s run this without supplying our new option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q test_sample.py
+F                                                                    [100%]
+================================= FAILURES =================================
+_______________________________ test_answer ________________________________
+
+cmdopt = &#39;type1&#39;
+
+    def test_answer(cmdopt):
+        if cmdopt == &quot;type1&quot;:
+            print(&quot;first&quot;)
+        elif cmdopt == &quot;type2&quot;:
+            print(&quot;second&quot;)
+&gt;       assert 0  # to see what was printed
+E       assert 0
+
+test_sample.py:6: AssertionError
+--------------------------- Captured stdout call ---------------------------
+first
+1 failed in 0.12 seconds
+</pre></div>
+</div>
+<p>And now with supplying a command line option:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q --cmdopt=type2
+F                                                                    [100%]
+================================= FAILURES =================================
+_______________________________ test_answer ________________________________
+
+cmdopt = &#39;type2&#39;
+
+    def test_answer(cmdopt):
+        if cmdopt == &quot;type1&quot;:
+            print(&quot;first&quot;)
+        elif cmdopt == &quot;type2&quot;:
+            print(&quot;second&quot;)
+&gt;       assert 0  # to see what was printed
+E       assert 0
+
+test_sample.py:6: AssertionError
+--------------------------- Captured stdout call ---------------------------
+second
+1 failed in 0.12 seconds
+</pre></div>
+</div>
+<p>You can see that the command line option arrived in our test.  This
+completes the basic pattern.  However, one often rather wants to process
+command line options outside of the test and rather pass in different or
+more complex objects.</p>
+</div>
+<div class="section" id="dynamically-adding-command-line-options">
+<h2>Dynamically adding command line options<a class="headerlink" href="#dynamically-adding-command-line-options" title="Permalink to this headline">¶</a></h2>
+<p>Through <a class="reference internal" href="../reference.html#confval-addopts"><code class="xref std std-confval docutils literal notranslate"><span class="pre">addopts</span></code></a> you can statically add command line
+options for your project.  You can also dynamically modify
+the command line arguments before they get processed:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_load_initial_conftests</span><span class="p">(</span><span class="n">args</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;xdist&quot;</span> <span class="ow">in</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">:</span>  <span class="c1"># pytest-xdist plugin</span>
+        <span class="kn">import</span> <span class="nn">multiprocessing</span>
+
+        <span class="n">num</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">multiprocessing</span><span class="o">.</span><span class="n">cpu_count</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">args</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;-n&quot;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">num</span><span class="p">)]</span> <span class="o">+</span> <span class="n">args</span>
+</pre></div>
+</div>
+<p>If you have the <a class="reference external" href="https://pypi.org/project/pytest-xdist/">xdist plugin</a> installed
+you will now always perform test runs using a number
+of subprocesses close to your CPU. Running in an empty
+directory with the above conftest.py:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+</div>
+<div class="section" id="control-skipping-of-tests-according-to-command-line-option">
+<span id="excontrolskip"></span><h2>Control skipping of tests according to command line option<a class="headerlink" href="#control-skipping-of-tests-according-to-command-line-option" title="Permalink to this headline">¶</a></h2>
+<p>Here is a <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file adding a <code class="docutils literal notranslate"><span class="pre">--runslow</span></code> command
+line option to control skipping of <code class="docutils literal notranslate"><span class="pre">pytest.mark.slow</span></code> marked tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--runslow&quot;</span><span class="p">,</span> <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span> <span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;run slow tests&quot;</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_collection_modifyitems</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="n">items</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">getoption</span><span class="p">(</span><span class="s2">&quot;--runslow&quot;</span><span class="p">):</span>
+        <span class="c1"># --runslow given in cli: do not skip slow tests</span>
+        <span class="k">return</span>
+    <span class="n">skip_slow</span> <span class="o">=</span> <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skip</span><span class="p">(</span><span class="n">reason</span><span class="o">=</span><span class="s2">&quot;need --runslow option to run&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;slow&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">keywords</span><span class="p">:</span>
+            <span class="n">item</span><span class="o">.</span><span class="n">add_marker</span><span class="p">(</span><span class="n">skip_slow</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can now write a test module like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">def</span> <span class="nf">test_func_fast</span><span class="p">():</span>
+    <span class="k">pass</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">slow</span>
+<span class="k">def</span> <span class="nf">test_func_slow</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>and when running it will see a skipped “slow” test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -rs    # &quot;-rs&quot; means report details on the little &#39;s&#39;
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+
+test_module.py .s                                                    [100%]
+========================= short test summary info ==========================
+SKIP [1] test_module.py:8: need --runslow option to run
+
+=================== 1 passed, 1 skipped in 0.12 seconds ====================
+</pre></div>
+</div>
+<p>Or run it including the <code class="docutils literal notranslate"><span class="pre">slow</span></code> marked test:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --runslow
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+
+test_module.py ..                                                    [100%]
+
+========================= 2 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+</div>
+<div class="section" id="writing-well-integrated-assertion-helpers">
+<h2>Writing well integrated assertion helpers<a class="headerlink" href="#writing-well-integrated-assertion-helpers" title="Permalink to this headline">¶</a></h2>
+<p>If you have a test helper function called from a test you can
+use the <code class="docutils literal notranslate"><span class="pre">pytest.fail</span></code> marker to fail a test with a certain message.
+The test support function will not show up in the traceback if you
+set the <code class="docutils literal notranslate"><span class="pre">__tracebackhide__</span></code> option somewhere in the helper function.
+Example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_checkconfig.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">def</span> <span class="nf">checkconfig</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">):</span>
+        <span class="n">pytest</span><span class="o">.</span><span class="n">fail</span><span class="p">(</span><span class="s2">&quot;not configured: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">x</span><span class="p">,))</span>
+
+
+<span class="k">def</span> <span class="nf">test_something</span><span class="p">():</span>
+    <span class="n">checkconfig</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">__tracebackhide__</span></code> setting influences <code class="docutils literal notranslate"><span class="pre">pytest</span></code> showing
+of tracebacks: the <code class="docutils literal notranslate"><span class="pre">checkconfig</span></code> function will not be shown
+unless the <code class="docutils literal notranslate"><span class="pre">--full-trace</span></code> command line option is specified.
+Let’s run our little function:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -q test_checkconfig.py
+F                                                                    [100%]
+================================= FAILURES =================================
+______________________________ test_something ______________________________
+
+    def test_something():
+&gt;       checkconfig(42)
+E       Failed: not configured: 42
+
+test_checkconfig.py:11: Failed
+1 failed in 0.12 seconds
+</pre></div>
+</div>
+<p>If you only want to hide certain exceptions, you can set <code class="docutils literal notranslate"><span class="pre">__tracebackhide__</span></code>
+to a callable which gets the <code class="docutils literal notranslate"><span class="pre">ExceptionInfo</span></code> object. You can for example use
+this to make sure unexpected exception types aren’t hidden:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">operator</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">class</span> <span class="nc">ConfigException</span><span class="p">(</span><span class="ne">Exception</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">checkconfig</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="n">operator</span><span class="o">.</span><span class="n">methodcaller</span><span class="p">(</span><span class="s2">&quot;errisinstance&quot;</span><span class="p">,</span> <span class="n">ConfigException</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;config&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">ConfigException</span><span class="p">(</span><span class="s2">&quot;not configured: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">x</span><span class="p">,))</span>
+
+
+<span class="k">def</span> <span class="nf">test_something</span><span class="p">():</span>
+    <span class="n">checkconfig</span><span class="p">(</span><span class="mi">42</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This will avoid hiding the exception traceback on unrelated exceptions (i.e.
+bugs in assertion helpers).</p>
+</div>
+<div class="section" id="detect-if-running-from-within-a-pytest-run">
+<h2>Detect if running from within a pytest run<a class="headerlink" href="#detect-if-running-from-within-a-pytest-run" title="Permalink to this headline">¶</a></h2>
+<p>Usually it is a bad idea to make application code
+behave differently if called from a test.  But if you
+absolutely must find out if your application code is
+running from a test you can do something like this:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">_called_from_test</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_unconfigure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">sys</span>
+
+    <span class="k">del</span> <span class="n">sys</span><span class="o">.</span><span class="n">_called_from_test</span>
+</pre></div>
+</div>
+<p>and then check for the <code class="docutils literal notranslate"><span class="pre">sys._called_from_test</span></code> flag:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">sys</span><span class="p">,</span> <span class="s2">&quot;_called_from_test&quot;</span><span class="p">):</span>
+    <span class="c1"># called from within a test run</span>
+    <span class="o">...</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># called &quot;normally&quot;</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>accordingly in your application.  It’s also a good idea
+to use your own application module rather than <code class="docutils literal notranslate"><span class="pre">sys</span></code>
+for handling flag.</p>
+</div>
+<div class="section" id="adding-info-to-test-report-header">
+<h2>Adding info to test report header<a class="headerlink" href="#adding-info-to-test-report-header" title="Permalink to this headline">¶</a></h2>
+<p>It’s easy to present extra information in a <code class="docutils literal notranslate"><span class="pre">pytest</span></code> run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_report_header</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="k">return</span> <span class="s2">&quot;project deps: mylib-1.1&quot;</span>
+</pre></div>
+</div>
+<p>which will add the string to the test header accordingly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+project deps: mylib-1.1
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>It is also possible to return a list of strings which will be considered as several
+lines of information. You may consider <code class="docutils literal notranslate"><span class="pre">config.getoption('verbose')</span></code> in order to
+display more information if applicable:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_report_header</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">getoption</span><span class="p">(</span><span class="s2">&quot;verbose&quot;</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[</span><span class="s2">&quot;info1: did you know that ...&quot;</span><span class="p">,</span> <span class="s2">&quot;did you?&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>which will add info only when run with “–v”:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -v
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y -- $PYTHON_PREFIX/bin/python3.6
+cachedir: .pytest_cache
+info1: did you know that ...
+did you?
+rootdir: $REGENDOC_TMPDIR, inifile:
+collecting ... collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+<p>and nothing when run plainly:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 0 items
+
+======================= no tests ran in 0.12 seconds =======================
+</pre></div>
+</div>
+</div>
+<div class="section" id="profiling-test-duration">
+<h2>profiling test duration<a class="headerlink" href="#profiling-test-duration" title="Permalink to this headline">¶</a></h2>
+<p>If you have a slow running large test suite you might want to find
+out which tests are the slowest. Let’s make an artificial test suite:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_some_are_slow.py</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+
+<span class="k">def</span> <span class="nf">test_funcfast</span><span class="p">():</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_funcslow1</span><span class="p">():</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.2</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">test_funcslow2</span><span class="p">():</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.3</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Now we can profile which test functions execute the slowest:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest --durations=3
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 3 items
+
+test_some_are_slow.py ...                                            [100%]
+
+========================= slowest 3 test durations =========================
+0.30s call     test_some_are_slow.py::test_funcslow2
+0.20s call     test_some_are_slow.py::test_funcslow1
+0.10s call     test_some_are_slow.py::test_funcfast
+========================= 3 passed in 0.12 seconds =========================
+</pre></div>
+</div>
+</div>
+<div class="section" id="incremental-testing-test-steps">
+<h2>incremental testing - test steps<a class="headerlink" href="#incremental-testing-test-steps" title="Permalink to this headline">¶</a></h2>
+<p>Sometimes you may have a testing situation which consists of a series
+of test steps.  If one step fails it makes no sense to execute further
+steps as they are all expected to fail anyway and their tracebacks
+add no insight.  Here is a simple <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file which introduces
+an <code class="docutils literal notranslate"><span class="pre">incremental</span></code> marker which is to be used on classes:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_runtest_makereport</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">call</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;incremental&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">keywords</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">call</span><span class="o">.</span><span class="n">excinfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">parent</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">parent</span>
+            <span class="n">parent</span><span class="o">.</span><span class="n">_previousfailed</span> <span class="o">=</span> <span class="n">item</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_runtest_setup</span><span class="p">(</span><span class="n">item</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s2">&quot;incremental&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">keywords</span><span class="p">:</span>
+        <span class="n">previousfailed</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">item</span><span class="o">.</span><span class="n">parent</span><span class="p">,</span> <span class="s2">&quot;_previousfailed&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">previousfailed</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">pytest</span><span class="o">.</span><span class="n">xfail</span><span class="p">(</span><span class="s2">&quot;previous test failed (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">previousfailed</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>These two hook implementations work together to abort incremental-marked
+tests in a class.  Here is a test module example:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_step.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">incremental</span>
+<span class="k">class</span> <span class="nc">TestUserHandling</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">test_login</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+    <span class="k">def</span> <span class="nf">test_modification</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="mi">0</span>
+
+    <span class="k">def</span> <span class="nf">test_deletion</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">test_normal</span><span class="p">():</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>If we run this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -rx
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 4 items
+
+test_step.py .Fx.                                                    [100%]
+
+================================= FAILURES =================================
+____________________ TestUserHandling.test_modification ____________________
+
+self = &lt;test_step.TestUserHandling object at 0xdeadbeef&gt;
+
+    def test_modification(self):
+&gt;       assert 0
+E       assert 0
+
+test_step.py:11: AssertionError
+========================= short test summary info ==========================
+XFAIL test_step.py::TestUserHandling::()::test_deletion
+  reason: previous test failed (test_modification)
+============== 1 failed, 2 passed, 1 xfailed in 0.12 seconds ===============
+</pre></div>
+</div>
+<p>We’ll see that <code class="docutils literal notranslate"><span class="pre">test_deletion</span></code> was not executed because <code class="docutils literal notranslate"><span class="pre">test_modification</span></code>
+failed.  It is reported as an “expected failure”.</p>
+</div>
+<div class="section" id="package-directory-level-fixtures-setups">
+<h2>Package/Directory-level fixtures (setups)<a class="headerlink" href="#package-directory-level-fixtures-setups" title="Permalink to this headline">¶</a></h2>
+<p>If you have nested test directories, you can have per-directory fixture scopes
+by placing fixture functions in a <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file in that directory
+You can use all types of fixtures including <a class="reference internal" href="../fixture.html#autouse-fixtures"><span class="std std-ref">autouse fixtures</span></a> which are the equivalent of xUnit’s setup/teardown
+concept.  It’s however recommended to have explicit fixture references in your
+tests or test classes rather than relying on implicitly executing
+setup/teardown functions, especially if they are far away from the actual tests.</p>
+<p>Here is an example for making a <code class="docutils literal notranslate"><span class="pre">db</span></code> fixture available in a directory:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of a/conftest.py</span>
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="k">class</span> <span class="nc">DB</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span><span class="p">(</span><span class="n">scope</span><span class="o">=</span><span class="s2">&quot;session&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">db</span><span class="p">():</span>
+    <span class="k">return</span> <span class="n">DB</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>and then a test module in that directory:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of a/test_db.py</span>
+<span class="k">def</span> <span class="nf">test_a1</span><span class="p">(</span><span class="n">db</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="mi">0</span><span class="p">,</span> <span class="n">db</span>  <span class="c1"># to show value</span>
+</pre></div>
+</div>
+<p>another test module:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of a/test_db2.py</span>
+<span class="k">def</span> <span class="nf">test_a2</span><span class="p">(</span><span class="n">db</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="mi">0</span><span class="p">,</span> <span class="n">db</span>  <span class="c1"># to show value</span>
+</pre></div>
+</div>
+<p>and then a module in a sister directory which will not see
+the <code class="docutils literal notranslate"><span class="pre">db</span></code> fixture:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of b/test_error.py</span>
+<span class="k">def</span> <span class="nf">test_root</span><span class="p">(</span><span class="n">db</span><span class="p">):</span>  <span class="c1"># no db here, will error out</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<p>We can run this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 7 items
+
+test_step.py .Fx.                                                    [ 57%]
+a/test_db.py F                                                       [ 71%]
+a/test_db2.py F                                                      [ 85%]
+b/test_error.py E                                                    [100%]
+
+================================== ERRORS ==================================
+_______________________ ERROR at setup of test_root ________________________
+file $REGENDOC_TMPDIR/b/test_error.py, line 1
+  def test_root(db):  # no db here, will error out
+E       fixture &#39;db&#39; not found
+&gt;       available fixtures: cache, capfd, capfdbinary, caplog, capsys, capsysbinary, doctest_namespace, monkeypatch, pytestconfig, record_property, record_xml_attribute, record_xml_property, recwarn, tmp_path, tmp_path_factory, tmpdir, tmpdir_factory
+&gt;       use &#39;pytest --fixtures [testpath]&#39; for help on them.
+
+$REGENDOC_TMPDIR/b/test_error.py:1
+================================= FAILURES =================================
+____________________ TestUserHandling.test_modification ____________________
+
+self = &lt;test_step.TestUserHandling object at 0xdeadbeef&gt;
+
+    def test_modification(self):
+&gt;       assert 0
+E       assert 0
+
+test_step.py:11: AssertionError
+_________________________________ test_a1 __________________________________
+
+db = &lt;conftest.DB object at 0xdeadbeef&gt;
+
+    def test_a1(db):
+&gt;       assert 0, db  # to show value
+E       AssertionError: &lt;conftest.DB object at 0xdeadbeef&gt;
+E       assert 0
+
+a/test_db.py:2: AssertionError
+_________________________________ test_a2 __________________________________
+
+db = &lt;conftest.DB object at 0xdeadbeef&gt;
+
+    def test_a2(db):
+&gt;       assert 0, db  # to show value
+E       AssertionError: &lt;conftest.DB object at 0xdeadbeef&gt;
+E       assert 0
+
+a/test_db2.py:2: AssertionError
+========== 3 failed, 2 passed, 1 xfailed, 1 error in 0.12 seconds ==========
+</pre></div>
+</div>
+<p>The two test modules in the <code class="docutils literal notranslate"><span class="pre">a</span></code> directory see the same <code class="docutils literal notranslate"><span class="pre">db</span></code> fixture instance
+while the one test in the sister-directory <code class="docutils literal notranslate"><span class="pre">b</span></code> doesn’t see it.  We could of course
+also define a <code class="docutils literal notranslate"><span class="pre">db</span></code> fixture in that sister directory’s <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> file.
+Note that each fixture is only instantiated if there is a test actually needing
+it (unless you use “autouse” fixture which are always executed ahead of the first test
+executing).</p>
+</div>
+<div class="section" id="post-process-test-reports-failures">
+<h2>post-process test reports / failures<a class="headerlink" href="#post-process-test-reports-failures" title="Permalink to this headline">¶</a></h2>
+<p>If you want to postprocess test reports and need access to the executing
+environment you can implement a hook that gets called when the test
+“report” object is about to be created.  Here we write out all failing
+test calls and also access a fixture (if it was used by the test) in
+case you want to query/look at it during your post processing.  In our
+case we just write some information out to a <code class="docutils literal notranslate"><span class="pre">failures</span></code> file:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+<span class="kn">import</span> <span class="nn">os.path</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">pytest_runtest_makereport</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">call</span><span class="p">):</span>
+    <span class="c1"># execute all other hooks to obtain the report object</span>
+    <span class="n">outcome</span> <span class="o">=</span> <span class="k">yield</span>
+    <span class="n">rep</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+
+    <span class="c1"># we only look at actual failing test calls, not setup/teardown</span>
+    <span class="k">if</span> <span class="n">rep</span><span class="o">.</span><span class="n">when</span> <span class="o">==</span> <span class="s2">&quot;call&quot;</span> <span class="ow">and</span> <span class="n">rep</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+        <span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;a&quot;</span> <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;failures&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="s2">&quot;w&quot;</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;failures&quot;</span><span class="p">,</span> <span class="n">mode</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+            <span class="c1"># let&#39;s also access a fixture for the fun of it</span>
+            <span class="k">if</span> <span class="s2">&quot;tmpdir&quot;</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">fixturenames</span><span class="p">:</span>
+                <span class="n">extra</span> <span class="o">=</span> <span class="s2">&quot; (</span><span class="si">%s</span><span class="s2">)&quot;</span> <span class="o">%</span> <span class="n">item</span><span class="o">.</span><span class="n">funcargs</span><span class="p">[</span><span class="s2">&quot;tmpdir&quot;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">extra</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+
+            <span class="n">f</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">rep</span><span class="o">.</span><span class="n">nodeid</span> <span class="o">+</span> <span class="n">extra</span> <span class="o">+</span> <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>if you then have failing tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+<span class="k">def</span> <span class="nf">test_fail1</span><span class="p">(</span><span class="n">tmpdir</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+
+<span class="k">def</span> <span class="nf">test_fail2</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>and run them:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest test_module.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 2 items
+
+test_module.py FF                                                    [100%]
+
+================================= FAILURES =================================
+________________________________ test_fail1 ________________________________
+
+tmpdir = local(&#39;PYTEST_TMPDIR/test_fail10&#39;)
+
+    def test_fail1(tmpdir):
+&gt;       assert 0
+E       assert 0
+
+test_module.py:2: AssertionError
+________________________________ test_fail2 ________________________________
+
+    def test_fail2():
+&gt;       assert 0
+E       assert 0
+
+test_module.py:6: AssertionError
+========================= 2 failed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>you will have a “failures” file which contains the failing test ids:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ cat failures
+test_module.py::test_fail1 (PYTEST_TMPDIR/test_fail10)
+test_module.py::test_fail2
+</pre></div>
+</div>
+</div>
+<div class="section" id="making-test-result-information-available-in-fixtures">
+<h2>Making test result information available in fixtures<a class="headerlink" href="#making-test-result-information-available-in-fixtures" title="Permalink to this headline">¶</a></h2>
+<p>If you want to make test result reports available in fixture finalizers
+here is a little example implemented via a local plugin:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of conftest.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">hookimpl</span><span class="p">(</span><span class="n">tryfirst</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">hookwrapper</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">pytest_runtest_makereport</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">call</span><span class="p">):</span>
+    <span class="c1"># execute all other hooks to obtain the report object</span>
+    <span class="n">outcome</span> <span class="o">=</span> <span class="k">yield</span>
+    <span class="n">rep</span> <span class="o">=</span> <span class="n">outcome</span><span class="o">.</span><span class="n">get_result</span><span class="p">()</span>
+
+    <span class="c1"># set a report attribute for each phase of a call, which can</span>
+    <span class="c1"># be &quot;setup&quot;, &quot;call&quot;, &quot;teardown&quot;</span>
+
+    <span class="nb">setattr</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">&quot;rep_&quot;</span> <span class="o">+</span> <span class="n">rep</span><span class="o">.</span><span class="n">when</span><span class="p">,</span> <span class="n">rep</span><span class="p">)</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">something</span><span class="p">(</span><span class="n">request</span><span class="p">):</span>
+    <span class="k">yield</span>
+    <span class="c1"># request.node is an &quot;item&quot; because we use the default</span>
+    <span class="c1"># &quot;function&quot; scope</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">rep_setup</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;setting up a test failed!&quot;</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nodeid</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">rep_setup</span><span class="o">.</span><span class="n">passed</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">rep_call</span><span class="o">.</span><span class="n">failed</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;executing test failed&quot;</span><span class="p">,</span> <span class="n">request</span><span class="o">.</span><span class="n">node</span><span class="o">.</span><span class="n">nodeid</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>if you then have failing tests:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_module.py</span>
+
+<span class="kn">import</span> <span class="nn">pytest</span>
+
+
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">fixture</span>
+<span class="k">def</span> <span class="nf">other</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+
+<span class="k">def</span> <span class="nf">test_setup_fails</span><span class="p">(</span><span class="n">something</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+    <span class="k">pass</span>
+
+
+<span class="k">def</span> <span class="nf">test_call_fails</span><span class="p">(</span><span class="n">something</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+
+
+<span class="k">def</span> <span class="nf">test_fail2</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="mi">0</span>
+</pre></div>
+</div>
+<p>and run it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest -s test_module.py
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 3 items
+
+test_module.py Esetting up a test failed! test_module.py::test_setup_fails
+Fexecuting test failed test_module.py::test_call_fails
+F
+
+================================== ERRORS ==================================
+____________________ ERROR at setup of test_setup_fails ____________________
+
+    @pytest.fixture
+    def other():
+&gt;       assert 0
+E       assert 0
+
+test_module.py:7: AssertionError
+================================= FAILURES =================================
+_____________________________ test_call_fails ______________________________
+
+something = None
+
+    def test_call_fails(something):
+&gt;       assert 0
+E       assert 0
+
+test_module.py:15: AssertionError
+________________________________ test_fail2 ________________________________
+
+    def test_fail2():
+&gt;       assert 0
+E       assert 0
+
+test_module.py:19: AssertionError
+==================== 2 failed, 1 error in 0.12 seconds =====================
+</pre></div>
+</div>
+<p>You’ll see that the fixture finalizers could use the precise reporting
+information.</p>
+</div>
+<div class="section" id="pytest-current-test-environment-variable">
+<span id="pytest-current-test-env"></span><h2><code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code> environment variable<a class="headerlink" href="#pytest-current-test-environment-variable" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 3.2.</span></p>
+</div>
+<p>Sometimes a test session might get stuck and there might be no easy way to figure out
+which test got stuck, for example if pytest was run in quiet mode (<code class="docutils literal notranslate"><span class="pre">-q</span></code>) or you don’t have access to the console
+output. This is particularly a problem if the problem helps only sporadically, the famous “flaky” kind of tests.</p>
+<p><code class="docutils literal notranslate"><span class="pre">pytest</span></code> sets a <code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code> environment variable when running tests, which can be inspected
+by process monitoring utilities or libraries like <a class="reference external" href="https://pypi.org/project/psutil/">psutil</a> to discover which
+test got stuck if necessary:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">psutil</span>
+
+<span class="k">for</span> <span class="n">pid</span> <span class="ow">in</span> <span class="n">psutil</span><span class="o">.</span><span class="n">pids</span><span class="p">():</span>
+    <span class="n">environ</span> <span class="o">=</span> <span class="n">psutil</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">pid</span><span class="p">)</span><span class="o">.</span><span class="n">environ</span><span class="p">()</span>
+    <span class="k">if</span> <span class="s2">&quot;PYTEST_CURRENT_TEST&quot;</span> <span class="ow">in</span> <span class="n">environ</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;pytest process </span><span class="si">{pid}</span><span class="s1"> running: </span><span class="si">{environ[&quot;PYTEST_CURRENT_TEST&quot;]}</span><span class="s1">&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>During the test session pytest will set <code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code> to the current test
+<a class="reference internal" href="../usage.html#nodeids"><span class="std std-ref">nodeid</span></a> and the current stage, which can be <code class="docutils literal notranslate"><span class="pre">setup</span></code>, <code class="docutils literal notranslate"><span class="pre">call</span></code>
+and <code class="docutils literal notranslate"><span class="pre">teardown</span></code>.</p>
+<p>For example, when running a single test function named <code class="docutils literal notranslate"><span class="pre">test_foo</span></code> from <code class="docutils literal notranslate"><span class="pre">foo_module.py</span></code>,
+<code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code> will be set to:</p>
+<ol class="arabic simple">
+<li><code class="docutils literal notranslate"><span class="pre">foo_module.py::test_foo</span> <span class="pre">(setup)</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">foo_module.py::test_foo</span> <span class="pre">(call)</span></code></li>
+<li><code class="docutils literal notranslate"><span class="pre">foo_module.py::test_foo</span> <span class="pre">(teardown)</span></code></li>
+</ol>
+<p>In that order.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The contents of <code class="docutils literal notranslate"><span class="pre">PYTEST_CURRENT_TEST</span></code> is meant to be human readable and the actual format
+can be changed between releases (even bug fixes) so it shouldn’t be relied on for scripting
+or automation.</p>
+</div>
+</div>
+<div class="section" id="freezing-pytest">
+<span id="id1"></span><h2>Freezing pytest<a class="headerlink" href="#freezing-pytest" title="Permalink to this headline">¶</a></h2>
+<p>If you freeze your application using a tool like
+<a class="reference external" href="https://pyinstaller.readthedocs.io">PyInstaller</a>
+in order to distribute it to your end-users, it is a good idea to also package
+your test runner and run your tests using the frozen application. This way packaging
+errors such as dependencies not being included into the executable can be detected early
+while also allowing you to send test files to users so they can run them in their
+machines, which can be useful to obtain more information about a hard to reproduce bug.</p>
+<p>Fortunately recent <code class="docutils literal notranslate"><span class="pre">PyInstaller</span></code> releases already have a custom hook
+for pytest, but if you are using another tool to freeze executables
+such as <code class="docutils literal notranslate"><span class="pre">cx_freeze</span></code> or <code class="docutils literal notranslate"><span class="pre">py2exe</span></code>, you can use <code class="docutils literal notranslate"><span class="pre">pytest.freeze_includes()</span></code>
+to obtain the full list of internal pytest modules. How to configure the tools
+to find the internal modules varies from tool to tool, however.</p>
+<p>Instead of freezing the pytest runner as a separate executable, you can make
+your frozen program work as the pytest runner by some clever
+argument handling during program startup. This allows you to
+have a single executable, which is usually more convenient.
+Please note that the mechanism for plugin discovery used by pytest
+(setupttools entry points) doesn’t work with frozen executables so pytest
+can’t find any third party plugins automatically. To include third party plugins
+like <code class="docutils literal notranslate"><span class="pre">pytest-timeout</span></code> they must be imported explicitly and passed on to pytest.main.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># contents of app_main.py</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">pytest_timeout</span>  <span class="c1"># Third party plugin</span>
+
+<span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s2">&quot;--pytest&quot;</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">pytest</span>
+
+    <span class="n">sys</span><span class="o">.</span><span class="n">exit</span><span class="p">(</span><span class="n">pytest</span><span class="o">.</span><span class="n">main</span><span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">argv</span><span class="p">[</span><span class="mi">2</span><span class="p">:],</span> <span class="n">plugins</span><span class="o">=</span><span class="p">[</span><span class="n">pytest_timeout</span><span class="p">]))</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="c1"># normal application execution: at this point argv can be parsed</span>
+    <span class="c1"># by your argument-parsing library of choice as usual</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>This allows you to execute tests using the frozen
+application with standard <code class="docutils literal notranslate"><span class="pre">pytest</span></code> command-line options:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">app_main</span> <span class="o">--</span><span class="n">pytest</span> <span class="o">--</span><span class="n">verbose</span> <span class="o">--</span><span class="n">tb</span><span class="o">=</span><span class="n">long</span> <span class="o">--</span><span class="n">junitxml</span><span class="o">=</span><span class="n">results</span><span class="o">.</span><span class="n">xml</span> <span class="n">test</span><span class="o">-</span><span class="n">suite</span><span class="o">/</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="parametrize.html" title="Parametrizing tests"
+             >next</a></li>
+        <li class="right" >
+          <a href="reportingdemo.html" title="Demo of Python failure reports with pytest"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Examples and customization tricks</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

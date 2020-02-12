@@ -1,0 +1,166 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>classic xunit-style setup &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installing and Using plugins" href="plugins.html" />
+    <link rel="prev" title="Running tests written for nose" href="nose.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plugins.html" title="Installing and Using plugins"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="nose.html" title="Running tests written for nose"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="classic-xunit-style-setup">
+<span id="xunitsetup"></span><span id="classic-xunit"></span><h1>classic xunit-style setup<a class="headerlink" href="#classic-xunit-style-setup" title="Permalink to this headline">¶</a></h1>
+<p>This section describes a classic and popular way how you can implement
+fixtures (setup and teardown test state) on a per-module/class/function basis.</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">While these setup/teardown methods are simple and familiar to those
+coming from a <code class="docutils literal notranslate"><span class="pre">unittest</span></code> or nose <code class="docutils literal notranslate"><span class="pre">background</span></code>, you may also consider
+using pytest’s more powerful <a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">fixture mechanism</span></a> which leverages the concept of dependency injection, allowing
+for a more modular and more scalable approach for managing test state,
+especially for larger projects and for functional testing.  You can
+mix both fixture mechanisms in the same file but
+test methods of <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses
+cannot receive fixture arguments.</p>
+</div>
+<div class="section" id="module-level-setup-teardown">
+<h2>Module level setup/teardown<a class="headerlink" href="#module-level-setup-teardown" title="Permalink to this headline">¶</a></h2>
+<p>If you have multiple test functions and test classes in a single
+module you can optionally implement the following fixture methods
+which will usually be called once for all the functions:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">setup_module</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; setup any state specific to the execution of the given module.&quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">teardown_module</span><span class="p">(</span><span class="n">module</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; teardown any state that was previously setup with a setup_module</span>
+<span class="sd">    method.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>As of pytest-3.0, the <code class="docutils literal notranslate"><span class="pre">module</span></code> parameter is optional.</p>
+</div>
+<div class="section" id="class-level-setup-teardown">
+<h2>Class level setup/teardown<a class="headerlink" href="#class-level-setup-teardown" title="Permalink to this headline">¶</a></h2>
+<p>Similarly, the following methods are called at class level before
+and after all test methods of the class are called:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">setup_class</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; setup any state specific to the execution of the given class (which</span>
+<span class="sd">    usually contains tests).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="nd">@classmethod</span>
+<span class="k">def</span> <span class="nf">teardown_class</span><span class="p">(</span><span class="bp">cls</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; teardown any state that was previously setup with a call to</span>
+<span class="sd">    setup_class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="method-and-function-level-setup-teardown">
+<h2>Method and function level setup/teardown<a class="headerlink" href="#method-and-function-level-setup-teardown" title="Permalink to this headline">¶</a></h2>
+<p>Similarly, the following methods are called around each method invocation:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">setup_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; setup any state tied to the execution of the given method in a</span>
+<span class="sd">    class.  setup_method is invoked for every test method of a class.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">teardown_method</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; teardown any state that was previously setup with a setup_method</span>
+<span class="sd">    call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>As of pytest-3.0, the <code class="docutils literal notranslate"><span class="pre">method</span></code> parameter is optional.</p>
+<p>If you would rather define test functions directly at module level
+you can also use the following functions to implement fixtures:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">setup_function</span><span class="p">(</span><span class="n">function</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; setup any state tied to the execution of the given function.</span>
+<span class="sd">    Invoked for every test function in the module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<span class="k">def</span> <span class="nf">teardown_function</span><span class="p">(</span><span class="n">function</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; teardown any state that was previously setup with a setup_function</span>
+<span class="sd">    call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</pre></div>
+</div>
+<p>As of pytest-3.0, the <code class="docutils literal notranslate"><span class="pre">function</span></code> parameter is optional.</p>
+<p>Remarks:</p>
+<ul class="simple">
+<li>It is possible for setup/teardown pairs to be invoked multiple times
+per testing process.</li>
+<li>teardown functions are not called if the corresponding setup function existed
+and failed/was skipped.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="plugins.html" title="Installing and Using plugins"
+             >next</a></li>
+        <li class="right" >
+          <a href="nose.html" title="Running tests written for nose"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,195 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.9.0 &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.8.7" href="release-2.8.7.html" />
+    <link rel="prev" title="pytest-2.9.1" href="release-2.9.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.8.7.html" title="pytest-2.8.7"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.9.1.html" title="pytest-2.9.1"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-9-0">
+<h1>pytest-2.9.0<a class="headerlink" href="#pytest-2-9-0" title="Permalink to this headline">¶</a></h1>
+<p>pytest is a mature Python testing tool with more than a 1100 tests
+against itself, passing on many different interpreters and platforms.</p>
+<p>See below for the changes and see docs at:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>As usual, you can upgrade from pypi via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Thanks to all who contributed to this release, among them:</p>
+<blockquote>
+<div>Anatoly Bubenkov
+Bruno Oliveira
+Buck Golemon
+David Vierra
+Florian Bruhin
+Galaczi Endre
+Georgy Dyuldin
+Lukas Bednar
+Luke Murphy
+Marcin Biernat
+Matt Williams
+Michael Aquilina
+Raphael Pierzina
+Ronny Pfannschmidt
+Ryan Wooden
+Tiemo Kieft
+TomV
+holger krekel
+jab</div></blockquote>
+<p>Happy testing,
+The py.test Development Team</p>
+<div class="section" id="compared-to-2-8-7">
+<h2>2.9.0 (compared to 2.8.7)<a class="headerlink" href="#compared-to-2-8-7" title="Permalink to this headline">¶</a></h2>
+<p><strong>New Features</strong></p>
+<ul class="simple">
+<li>New <code class="docutils literal notranslate"><span class="pre">pytest.mark.skip</span></code> mark, which unconditionally skips marked tests.
+Thanks <a class="reference external" href="https://github.com/MichaelAquilina">&#64;MichaelAquilina</a> for the complete PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1040">#1040</a>).</li>
+<li><code class="docutils literal notranslate"><span class="pre">--doctest-glob</span></code> may now be passed multiple times in the command-line.
+Thanks <a class="reference external" href="https://github.com/jab">&#64;jab</a> and <a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR.</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">-rp</span></code> and <code class="docutils literal notranslate"><span class="pre">-rP</span></code> reporting options give the summary and full output
+of passing tests, respectively. Thanks to <a class="reference external" href="https://github.com/codewarrior0">&#64;codewarrior0</a> for the PR.</li>
+<li><code class="docutils literal notranslate"><span class="pre">pytest.mark.xfail</span></code> now has a <code class="docutils literal notranslate"><span class="pre">strict</span></code> option which makes <code class="docutils literal notranslate"><span class="pre">XPASS</span></code>
+tests to fail the test suite, defaulting to <code class="docutils literal notranslate"><span class="pre">False</span></code>. There’s also a
+<code class="docutils literal notranslate"><span class="pre">xfail_strict</span></code> ini option that can be used to configure it project-wise.
+Thanks <a class="reference external" href="https://github.com/rabbbit">&#64;rabbbit</a> for the request and <a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1355">#1355</a>).</li>
+<li><code class="docutils literal notranslate"><span class="pre">Parser.addini</span></code> now supports options of type <code class="docutils literal notranslate"><span class="pre">bool</span></code>. Thanks
+<a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR.</li>
+<li>New <code class="docutils literal notranslate"><span class="pre">ALLOW_BYTES</span></code> doctest option strips <code class="docutils literal notranslate"><span class="pre">b</span></code> prefixes from byte strings
+in doctest output (similar to <code class="docutils literal notranslate"><span class="pre">ALLOW_UNICODE</span></code>).
+Thanks <a class="reference external" href="https://github.com/jaraco">&#64;jaraco</a> for the request and <a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1287">#1287</a>).</li>
+<li>give a hint on KeyboardInterrupt to use the –fulltrace option to show the errors,
+this fixes <a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1366">#1366</a>.
+Thanks to <a class="reference external" href="https://github.com/hpk42">&#64;hpk42</a> for the report and <a class="reference external" href="https://github.com/RonnyPfannschmidt">&#64;RonnyPfannschmidt</a> for the PR.</li>
+<li>catch IndexError exceptions when getting exception source location. This fixes
+pytest internal error for dynamically generated code (fixtures and tests)
+where source lines are fake by intention</li>
+</ul>
+<p><strong>Changes</strong></p>
+<ul>
+<li><p class="first"><strong>Important</strong>: <a class="reference external" href="https://pylib.readthedocs.io/en/latest/code.html">py.code</a> has been
+merged into the <code class="docutils literal notranslate"><span class="pre">pytest</span></code> repository as <code class="docutils literal notranslate"><span class="pre">pytest._code</span></code>. This decision
+was made because <code class="docutils literal notranslate"><span class="pre">py.code</span></code> had very few uses outside <code class="docutils literal notranslate"><span class="pre">pytest</span></code> and the
+fact that it was in a different repository made it difficult to fix bugs on
+its code in a timely manner. The team hopes with this to be able to better
+refactor out and improve that code.
+This change shouldn’t affect users, but it is useful to let users aware
+if they encounter any strange behavior.</p>
+<p>Keep in mind that the code for <code class="docutils literal notranslate"><span class="pre">pytest._code</span></code> is <strong>private</strong> and
+<strong>experimental</strong>, so you definitely should not import it explicitly!</p>
+<p>Please note that the original <code class="docutils literal notranslate"><span class="pre">py.code</span></code> is still available in
+<a class="reference external" href="https://pylib.readthedocs.io">pylib</a>.</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">pytest_enter_pdb</span></code> now optionally receives the pytest config object.
+Thanks <a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR.</p>
+</li>
+<li><p class="first">Removed code and documentation for Python 2.5 or lower versions,
+including removal of the obsolete <code class="docutils literal notranslate"><span class="pre">_pytest.assertion.oldinterpret</span></code> module.
+Thanks <a class="reference external" href="https://github.com/nicoddemus">&#64;nicoddemus</a> for the PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1226">#1226</a>).</p>
+</li>
+<li><p class="first">Comparisons now always show up in full when <code class="docutils literal notranslate"><span class="pre">CI</span></code> or <code class="docutils literal notranslate"><span class="pre">BUILD_NUMBER</span></code> is
+found in the environment, even when -vv isn’t used.
+Thanks <a class="reference external" href="https://github.com/The-Compiler">&#64;The-Compiler</a> for the PR.</p>
+</li>
+<li><p class="first"><code class="docutils literal notranslate"><span class="pre">--lf</span></code> and <code class="docutils literal notranslate"><span class="pre">--ff</span></code> now support long names: <code class="docutils literal notranslate"><span class="pre">--last-failed</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--failed-first</span></code> respectively.
+Thanks <a class="reference external" href="https://github.com/MichaelAquilina">&#64;MichaelAquilina</a> for the PR.</p>
+</li>
+<li><p class="first">Added expected exceptions to pytest.raises fail message</p>
+</li>
+<li><p class="first">Collection only displays progress (“collecting X items”) when in a terminal.
+This avoids cluttering the output when using <code class="docutils literal notranslate"><span class="pre">--color=yes</span></code> to obtain
+colors in CI integrations systems (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1397">#1397</a>).</p>
+</li>
+</ul>
+<p><strong>Bug Fixes</strong></p>
+<ul class="simple">
+<li>The <code class="docutils literal notranslate"><span class="pre">-s</span></code> and <code class="docutils literal notranslate"><span class="pre">-c</span></code> options should now work under <code class="docutils literal notranslate"><span class="pre">xdist</span></code>;
+<code class="docutils literal notranslate"><span class="pre">Config.fromdictargs</span></code> now represents its input much more faithfully.
+Thanks to <a class="reference external" href="https://github.com/bukzor">&#64;bukzor</a> for the complete PR (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/680">#680</a>).</li>
+<li>Fix (<a class="reference external" href="https://github.com/pytest-dev/pytest/pull/1290">#1290</a>): support Python 3.5’s <code class="docutils literal notranslate"><span class="pre">&#64;</span></code> operator in assertion rewriting.
+Thanks <a class="reference external" href="https://github.com/Shinkenjoe">&#64;Shinkenjoe</a> for report with test case and <a class="reference external" href="https://github.com/tomviner">&#64;tomviner</a> for the PR.</li>
+<li>Fix formatting utf-8 explanation messages (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1379">#1379</a>).
+Thanks <a class="reference external" href="https://github.com/biern">&#64;biern</a> for the PR.</li>
+<li>Fix <a class="reference external" href="https://pytest.org/latest/usage.html#modifying-python-traceback-printing">traceback style docs</a> to describe all of the available options
+(auto/long/short/line/native/no), with <code class="docutils literal notranslate"><span class="pre">auto</span></code> being the default since v2.6.
+Thanks <a class="reference external" href="https://github.com/hackebrot">&#64;hackebrot</a> for the PR.</li>
+<li>Fix (<a class="reference external" href="https://github.com/pytest-dev/pytest/issues/1422">#1422</a>): junit record_xml_property doesn’t allow multiple records
+with same name.</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.8.7.html" title="pytest-2.8.7"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.9.1.html" title="pytest-2.9.1"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

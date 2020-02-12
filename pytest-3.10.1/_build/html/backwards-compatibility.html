@@ -1,0 +1,92 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Backwards Compatibility Policy &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Deprecations and Removals" href="deprecations.html" />
+    <link rel="prev" title="Setting up bash completion" href="bash-completion.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="deprecations.html" title="Deprecations and Removals"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="bash-completion.html" title="Setting up bash completion"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="backwards-compatibility-policy">
+<span id="backwards-compatibility"></span><h1>Backwards Compatibility Policy<a class="headerlink" href="#backwards-compatibility-policy" title="Permalink to this headline">¶</a></h1>
+<p>Keeping backwards compatibility has a very high priority in the pytest project. Although we have deprecated functionality over the years, most of it is still supported. All deprecations in pytest were done because simpler or more efficient ways of accomplishing the same tasks have emerged, making the old way of doing things unnecessary.</p>
+<p>With the pytest 3.0 release we introduced a clear communication scheme for when we will actually remove the old busted joint and politely ask you to use the new hotness instead, while giving you enough time to adjust your tests or raise concerns if there are valid reasons to keep deprecated functionality around.</p>
+<p>To communicate changes we issue deprecation warnings using a custom warning hierarchy (see <a class="reference internal" href="warnings.html#internal-warnings"><span class="std std-ref">Internal pytest warnings</span></a>). These warnings may be suppressed using the standard means: <code class="docutils literal notranslate"><span class="pre">-W</span></code> command-line flag or <code class="docutils literal notranslate"><span class="pre">filterwarnings</span></code> ini options (see <a class="reference internal" href="warnings.html#warnings"><span class="std std-ref">Warnings Capture</span></a>), but we suggest to use these sparingly and temporarily, and heed the warnings when possible.</p>
+<p>We will only start the removal of deprecated functionality in major releases (e.g. if we deprecate something in 3.0 we will start to remove it in 4.0), and keep it around for at least two minor releases (e.g. if we deprecate something in 3.9 and 4.0 is the next release, we start to remove it in 5.0, not in 4.0).</p>
+<p>When the deprecation expires (e.g. 4.0 is released), we won’t remove the deprecated functionality immediately, but will use the standard warning filters to turn them into <strong>errors</strong> by default. This approach makes it explicit that removal is imminent, and still gives you time to turn the deprecated feature into a warning instead of an error so it can be dealt with in your own time. In the next minor release (e.g. 4.1), the feature will be effectively removed.</p>
+<div class="section" id="deprecation-roadmap">
+<h2>Deprecation Roadmap<a class="headerlink" href="#deprecation-roadmap" title="Permalink to this headline">¶</a></h2>
+<p>Features currently deprecated and removed in previous releases can be found in <a class="reference internal" href="deprecations.html#deprecations"><span class="std std-ref">Deprecations and Removals</span></a>.</p>
+<p>We track future deprecation and removal of features using milestones and the <a class="reference external" href="https://github.com/pytest-dev/pytest/issues?q=label%3A%22type%3A+deprecation%22">deprecation</a> and <a class="reference external" href="https://github.com/pytest-dev/pytest/labels/type%3A%20removal">removal</a> labels on GitHub.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="deprecations.html" title="Deprecations and Removals"
+             >next</a></li>
+        <li class="right" >
+          <a href="bash-completion.html" title="Setting up bash completion"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

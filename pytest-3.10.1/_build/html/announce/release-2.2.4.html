@@ -1,0 +1,116 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.2.4: bug fixes, better junitxml/unittest/python3 compat &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.2.2: bug fixes" href="release-2.2.2.html" />
+    <link rel="prev" title="pytest-2.3: improved fixtures / better unittest integration" href="release-2.3.0.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.2.2.html" title="pytest-2.2.2: bug fixes"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.3.0.html" title="pytest-2.3: improved fixtures / better unittest integration"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-2-4-bug-fixes-better-junitxml-unittest-python3-compat">
+<h1>pytest-2.2.4: bug fixes, better junitxml/unittest/python3 compat<a class="headerlink" href="#pytest-2-2-4-bug-fixes-better-junitxml-unittest-python3-compat" title="Permalink to this headline">¶</a></h1>
+<p>pytest-2.2.4 is a minor backward-compatible release of the versatile
+py.test testing tool.   It contains bug fixes and a few refinements
+to junitxml reporting, better unittest- and python3 compatibility.</p>
+<p>For general information see here:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org/">http://pytest.org/</a></div></blockquote>
+<p>To install or upgrade pytest:</p>
+<blockquote>
+<div>pip install -U pytest # or
+easy_install -U pytest</div></blockquote>
+<p>Special thanks for helping on this release to Ronny Pfannschmidt
+and Benjamin Peterson and the contributors of issues.</p>
+<p>best,
+holger krekel</p>
+<div class="section" id="changes-between-2-2-3-and-2-2-4">
+<h2>Changes between 2.2.3 and 2.2.4<a class="headerlink" href="#changes-between-2-2-3-and-2-2-4" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>fix error message for rewritten assertions involving the % operator</li>
+<li>fix issue 126: correctly match all invalid xml characters for junitxml
+binary escape</li>
+<li>fix issue with unittest: now &#64;unittest.expectedFailure markers should
+be processed correctly (you can also use &#64;pytest.mark markers)</li>
+<li>document integration with the extended distribute/setuptools test commands</li>
+<li>fix issue 140: properly get the real functions
+of bound classmethods for setup/teardown_class</li>
+<li>fix issue #141: switch from the deceased paste.pocoo.org to bpaste.net</li>
+<li>fix issue #143: call unconfigure/sessionfinish always when
+configure/sessionstart where called</li>
+<li>fix issue #144: better mangle test ids to junitxml classnames</li>
+<li>upgrade distribute_setup.py to 0.6.27</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.2.2.html" title="pytest-2.2.2: bug fixes"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.3.0.html" title="pytest-2.3: improved fixtures / better unittest integration"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

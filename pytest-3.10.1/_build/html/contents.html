@@ -1,0 +1,375 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Full pytest documentation &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation and Getting Started" href="getting-started.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="getting-started.html" title="Installation and Getting Started"
+             accesskey="N">next</a></li>
+        <li class="nav-item nav-item-0"><a href="#">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="full-pytest-documentation">
+<span id="toc"></span><h1>Full pytest documentation<a class="headerlink" href="#full-pytest-documentation" title="Permalink to this headline">¶</a></h1>
+<p><a class="reference external" href="https://media.readthedocs.org/pdf/pytest/latest/pytest.pdf">Download latest version as PDF</a></p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="getting-started.html">Installation and Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#install-pytest">Install <code class="docutils literal notranslate"><span class="pre">pytest</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#create-your-first-test">Create your first test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#run-multiple-tests">Run multiple tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#assert-that-a-certain-exception-is-raised">Assert that a certain exception is raised</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#group-multiple-tests-in-a-class">Group multiple tests in a class</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#request-a-unique-temporary-directory-for-functional-tests">Request a unique temporary directory for functional tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="getting-started.html#continue-reading">Continue reading</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage and Invocations</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#calling-pytest-through-python-m-pytest">Calling pytest through <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pytest</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#possible-exit-codes">Possible exit codes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#getting-help-on-version-option-names-environment-variables">Getting help on version, option names, environment variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#stopping-after-the-first-or-n-failures">Stopping after the first (or N) failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#specifying-tests-selecting-tests">Specifying tests / selecting tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#modifying-python-traceback-printing">Modifying Python traceback printing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#detailed-summary-report">Detailed summary report</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#dropping-to-pdb-python-debugger-on-failures">Dropping to PDB (Python Debugger) on failures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#dropping-to-pdb-python-debugger-at-the-start-of-a-test">Dropping to PDB (Python Debugger) at the start of a test</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#setting-breakpoints">Setting breakpoints</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#using-the-builtin-breakpoint-function">Using the builtin breakpoint function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#profiling-test-execution-duration">Profiling test execution duration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#creating-junitxml-format-files">Creating JUnitXML format files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#creating-resultlog-format-files">Creating resultlog format files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#sending-test-report-to-online-pastebin-service">Sending test report to online pastebin service</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#disabling-plugins">Disabling plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="usage.html#calling-pytest-from-python-code">Calling pytest from Python code</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="existingtestsuite.html">Using pytest with an existing test suite</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="existingtestsuite.html#running-an-existing-test-suite-with-pytest">Running an existing test suite with pytest</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="assert.html">The writing and reporting of assertions in tests</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#asserting-with-the-assert-statement">Asserting with the <code class="docutils literal notranslate"><span class="pre">assert</span></code> statement</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#assertions-about-expected-exceptions">Assertions about expected exceptions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#assertions-about-expected-warnings">Assertions about expected warnings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#making-use-of-context-sensitive-comparisons">Making use of context-sensitive comparisons</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#defining-your-own-assertion-comparison">Defining your own assertion comparison</a></li>
+<li class="toctree-l2"><a class="reference internal" href="assert.html#advanced-assertion-introspection">Advanced assertion introspection</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="fixture.html">pytest fixtures: explicit, modular, scalable</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#fixtures-as-function-arguments">Fixtures as Function arguments</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#fixtures-a-prime-example-of-dependency-injection">Fixtures: a prime example of dependency injection</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#conftest-py-sharing-fixture-functions"><code class="docutils literal notranslate"><span class="pre">conftest.py</span></code>: sharing fixture functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#sharing-test-data">Sharing test data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#scope-sharing-a-fixture-instance-across-tests-in-a-class-module-or-session">Scope: sharing a fixture instance across tests in a class, module or session</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#higher-scoped-fixtures-are-instantiated-first">Higher-scoped fixtures are instantiated first</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#fixture-finalization-executing-teardown-code">Fixture finalization / executing teardown code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#fixtures-can-introspect-the-requesting-test-context">Fixtures can introspect the requesting test context</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#factories-as-fixtures">Factories as fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#parametrizing-fixtures">Parametrizing fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#using-marks-with-parametrized-fixtures">Using marks with parametrized fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#modularity-using-fixtures-from-a-fixture-function">Modularity: using fixtures from a fixture function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#automatic-grouping-of-tests-by-fixture-instances">Automatic grouping of tests by fixture instances</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#using-fixtures-from-classes-modules-or-projects">Using fixtures from classes, modules or projects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#autouse-fixtures-xunit-setup-on-steroids">Autouse fixtures (xUnit setup on steroids)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="fixture.html#overriding-fixtures-on-various-levels">Overriding fixtures on various levels</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="mark.html">Marking test functions with attributes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="mark.html#raising-errors-on-unknown-marks-strict">Raising errors on unknown marks: –strict</a></li>
+<li class="toctree-l2"><a class="reference internal" href="mark.html#marker-revamp-and-iteration">Marker revamp and iteration</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="monkeypatch.html">Monkeypatching/mocking modules and environments</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="monkeypatch.html#simple-example-monkeypatching-functions">Simple example: monkeypatching functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monkeypatch.html#example-preventing-requests-from-remote-operations">example: preventing “requests” from remote operations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="monkeypatch.html#api-reference">API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="tmpdir.html">Temporary directories and files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tmpdir.html#the-tmp-path-fixture">The <code class="docutils literal notranslate"><span class="pre">tmp_path</span></code> fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tmpdir.html#the-tmp-path-factory-fixture">The <code class="docutils literal notranslate"><span class="pre">tmp_path_factory</span></code> fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tmpdir.html#the-tmpdir-fixture">The ‘tmpdir’ fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tmpdir.html#the-tmpdir-factory-fixture">The ‘tmpdir_factory’ fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="tmpdir.html#the-default-base-temporary-directory">The default base temporary directory</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="capture.html">Capturing of the stdout/stderr output</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="capture.html#default-stdout-stderr-stdin-capturing-behaviour">Default stdout/stderr/stdin capturing behaviour</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capture.html#setting-capturing-methods-or-disabling-capturing">Setting capturing methods or disabling capturing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capture.html#using-print-statements-for-debugging">Using print statements for debugging</a></li>
+<li class="toctree-l2"><a class="reference internal" href="capture.html#accessing-captured-output-from-a-test-function">Accessing captured output from a test function</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="warnings.html">Warnings Capture</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#pytest-mark-filterwarnings"><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.filterwarnings</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#disabling-warnings-summary">Disabling warnings summary</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#disabling-warning-capture-entirely">Disabling warning capture entirely</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#deprecationwarning-and-pendingdeprecationwarning">DeprecationWarning and PendingDeprecationWarning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#ensuring-code-triggers-a-deprecation-warning">Ensuring code triggers a deprecation warning</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#warns">Asserting warnings with the warns function</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#recwarn">Recording warnings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="warnings.html#internal-pytest-warnings">Internal pytest warnings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="doctest.html">Doctest integration for modules and test files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="doctest.html#the-doctest-namespace-fixture">The ‘doctest_namespace’ fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="doctest.html#output-format">Output format</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="skipping.html">Skip and xfail: dealing with tests that cannot succeed</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="skipping.html#skipping-test-functions">Skipping test functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="skipping.html#xfail-mark-test-functions-as-expected-to-fail">XFail: mark test functions as expected to fail</a></li>
+<li class="toctree-l2"><a class="reference internal" href="skipping.html#skip-xfail-with-parametrize">Skip/xfail with parametrize</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="parametrize.html">Parametrizing fixtures and test functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="parametrize.html#pytest-mark-parametrize-parametrizing-test-functions"><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.parametrize</span></code>: parametrizing test functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parametrize.html#basic-pytest-generate-tests-example">Basic <code class="docutils literal notranslate"><span class="pre">pytest_generate_tests</span></code> example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="parametrize.html#more-examples">More examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="cache.html">Cache: working with cross-testrun state</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#rerunning-only-failures-or-failures-first">Rerunning only failures or failures first</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#behavior-when-no-tests-failed-in-the-last-run">Behavior when no tests failed in the last run</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#the-new-config-cache-object">The new config.cache object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#inspecting-cache-content">Inspecting Cache content</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#clearing-cache-content">Clearing Cache content</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cache.html#stepwise">Stepwise</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="unittest.html">unittest.TestCase Support</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="unittest.html#benefits-out-of-the-box">Benefits out of the box</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unittest.html#pytest-features-in-unittest-testcase-subclasses">pytest features in <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unittest.html#mixing-pytest-fixtures-into-unittest-testcase-subclasses-using-marks">Mixing pytest fixtures into <code class="docutils literal notranslate"><span class="pre">unittest.TestCase</span></code> subclasses using marks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="unittest.html#using-autouse-fixtures-and-accessing-other-fixtures">Using autouse fixtures and accessing other fixtures</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="nose.html">Running tests written for nose</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="nose.html#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nose.html#supported-nose-idioms">Supported nose Idioms</a></li>
+<li class="toctree-l2"><a class="reference internal" href="nose.html#unsupported-idioms-known-issues">Unsupported idioms / known issues</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="xunit_setup.html">classic xunit-style setup</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="xunit_setup.html#module-level-setup-teardown">Module level setup/teardown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xunit_setup.html#class-level-setup-teardown">Class level setup/teardown</a></li>
+<li class="toctree-l2"><a class="reference internal" href="xunit_setup.html#method-and-function-level-setup-teardown">Method and function level setup/teardown</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="plugins.html">Installing and Using plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="plugins.html#requiring-loading-plugins-in-a-test-module-or-conftest-file">Requiring/Loading plugins in a test module or conftest file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins.html#finding-out-which-plugins-are-active">Finding out which plugins are active</a></li>
+<li class="toctree-l2"><a class="reference internal" href="plugins.html#deactivating-unregistering-a-plugin-by-name">Deactivating / unregistering a plugin by name</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="writing_plugins.html">Writing plugins</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#plugin-discovery-order-at-tool-startup">Plugin discovery order at tool startup</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#conftest-py-local-per-directory-plugins">conftest.py: local per-directory plugins</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#writing-your-own-plugin">Writing your own plugin</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#making-your-plugin-installable-by-others">Making your plugin installable by others</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#assertion-rewriting">Assertion Rewriting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#requiring-loading-plugins-in-a-test-module-or-conftest-file">Requiring/Loading plugins in a test module or conftest file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#accessing-another-plugin-by-name">Accessing another plugin by name</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#testing-plugins">Testing plugins</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="writing_plugins.html#writing-hook-functions">Writing hook functions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#hook-function-validation-and-execution">hook function validation and execution</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#firstresult-stop-at-first-non-none-result">firstresult: stop at first non-None result</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#hookwrapper-executing-around-other-hooks">hookwrapper: executing around other hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#hook-function-ordering-call-example">Hook function ordering / call example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#declaring-new-hooks">Declaring new hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="writing_plugins.html#optionally-using-hooks-from-3rd-party-plugins">Optionally using hooks from 3rd party plugins</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="logging.html">Logging</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="logging.html#caplog-fixture">caplog fixture</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logging.html#live-logs">Live Logs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logging.html#release-notes">Release notes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="logging.html#incompatible-changes-in-pytest-3-4">Incompatible changes in pytest 3.4</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference.html">Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#functions">Functions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#marks">Marks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#fixtures">Fixtures</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#hooks">Hooks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#objects">Objects</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#special-variables">Special Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#environment-variables">Environment Variables</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference.html#configuration-options">Configuration Options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="goodpractices.html">Good Integration Practices</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="goodpractices.html#install-package-with-pip">Install package with pip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="goodpractices.html#conventions-for-python-test-discovery">Conventions for Python test discovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="goodpractices.html#choosing-a-test-layout-import-rules">Choosing a test layout / import rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="goodpractices.html#tox">tox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="goodpractices.html#integrating-with-setuptools-python-setup-py-test-pytest-runner">Integrating with setuptools / <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">setup.py</span> <span class="pre">test</span></code> / <code class="docutils literal notranslate"><span class="pre">pytest-runner</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="flaky.html">Flaky tests</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#why-flaky-tests-are-a-problem">Why flaky tests are a problem</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#potential-root-causes">Potential root causes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#pytest-features">Pytest features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#other-general-strategies">Other general strategies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#research">Research</a></li>
+<li class="toctree-l2"><a class="reference internal" href="flaky.html#resources">Resources</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="pythonpath.html">pytest import mechanisms and <code class="docutils literal notranslate"><span class="pre">sys.path</span></code>/<code class="docutils literal notranslate"><span class="pre">PYTHONPATH</span></code></a><ul>
+<li class="toctree-l2"><a class="reference internal" href="pythonpath.html#test-modules-conftest-py-files-inside-packages">Test modules / <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files inside packages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pythonpath.html#standalone-test-modules-conftest-py-files">Standalone test modules / <code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="pythonpath.html#invoking-pytest-versus-python-m-pytest">Invoking <code class="docutils literal notranslate"><span class="pre">pytest</span></code> versus <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">-m</span> <span class="pre">pytest</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="customize.html">Configuration</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="customize.html#command-line-options-and-configuration-file-settings">Command line options and configuration file settings</a></li>
+<li class="toctree-l2"><a class="reference internal" href="customize.html#initialization-determining-rootdir-and-inifile">Initialization: determining rootdir and inifile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="customize.html#adding-default-options">How to change command line options defaults</a></li>
+<li class="toctree-l2"><a class="reference internal" href="customize.html#builtin-configuration-file-options">Builtin configuration file options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="example/index.html">Examples and customization tricks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="example/reportingdemo.html">Demo of Python failure reports with pytest</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/simple.html">Basic patterns and examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/parametrize.html">Parametrizing tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/markers.html">Working with custom markers</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/special.html">A session-fixture which can look at all collected tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/pythoncollection.html">Changing standard (Python) test discovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="example/nonpython.html">Working with non-python tests</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="bash-completion.html">Setting up bash completion</a></li>
+<li class="toctree-l1"><a class="reference internal" href="backwards-compatibility.html">Backwards Compatibility Policy</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="backwards-compatibility.html#deprecation-roadmap">Deprecation Roadmap</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="deprecations.html">Deprecations and Removals</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="deprecations.html#deprecated-features">Deprecated Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="deprecations.html#removed-features">Removed Features</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="historical-notes.html">Historical Notes</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#cache-plugin-integrated-into-the-core">cache plugin integrated into the core</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#funcargs-and-pytest-funcarg">funcargs and <code class="docutils literal notranslate"><span class="pre">pytest_funcarg__</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#pytest-yield-fixture-decorator"><code class="docutils literal notranslate"><span class="pre">&#64;pytest.yield_fixture</span></code> decorator</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#pytest-header-in-setup-cfg"><code class="docutils literal notranslate"><span class="pre">[pytest]</span></code> header in <code class="docutils literal notranslate"><span class="pre">setup.cfg</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#applying-marks-to-pytest-mark-parametrize-parameters">Applying marks to <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.parametrize</span></code> parameters</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#pytest-mark-parametrize-argument-names-as-a-tuple"><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.parametrize</span></code> argument names as a tuple</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#setup-is-now-an-autouse-fixture">setup: is now an “autouse fixture”</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#conditions-as-strings-instead-of-booleans">Conditions as strings instead of booleans</a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#pytest-set-trace"><code class="docutils literal notranslate"><span class="pre">pytest.set_trace()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="historical-notes.html#compat-properties">“compat” properties</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">License</a></li>
+<li class="toctree-l1"><a class="reference internal" href="contributing.html">Contribution getting started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#feature-requests-and-feedback">Feature requests and feedback</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#report-bugs">Report bugs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#fix-bugs">Fix bugs</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#implement-features">Implement features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#write-documentation">Write documentation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#submitting-plugins-to-pytest-dev">Submitting Plugins to pytest-dev</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#preparing-pull-requests">Preparing Pull Requests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#writing-tests">Writing Tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contributing.html#joining-the-development-team">Joining the Development Team</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="development_guide.html">Development Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="development_guide.html#code-style">Code Style</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development_guide.html#branches">Branches</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development_guide.html#issues">Issues</a></li>
+<li class="toctree-l2"><a class="reference internal" href="development_guide.html#release-procedure">Release Procedure</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="talks.html">Talks and Tutorials</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="talks.html#books">Books</a></li>
+<li class="toctree-l2"><a class="reference internal" href="talks.html#talks-and-blog-postings">Talks and blog postings</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="projects.html">Project examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="projects.html#some-organisations-using-pytest">Some organisations using pytest</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Some Issues and Questions</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#on-naming-nosetests-licensing-and-magic">On naming, nosetests, licensing and magic</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#pytest-fixtures-parametrized-tests">pytest fixtures, parametrized tests</a></li>
+<li class="toctree-l2"><a class="reference internal" href="faq.html#pytest-interaction-with-other-packages">pytest interaction with other packages</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contact.html">Contact channels</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="announce/index.html">Release announcements</a></li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="getting-started.html" title="Installation and Getting Started"
+             >next</a></li>
+        <li class="nav-item nav-item-0"><a href="#">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

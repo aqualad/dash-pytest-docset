@@ -1,0 +1,131 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest: helps you write better programs &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-helps-you-write-better-programs">
+<span id="features"></span><h1>pytest: helps you write better programs<a class="headerlink" href="#pytest-helps-you-write-better-programs" title="Permalink to this headline">¶</a></h1>
+<p>The <code class="docutils literal notranslate"><span class="pre">pytest</span></code> framework makes it easy to write small tests, yet
+scales to support complex functional testing for applications and libraries.</p>
+<p>An example of a simple test:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># content of test_sample.py</span>
+<span class="k">def</span> <span class="nf">inc</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+
+
+<span class="k">def</span> <span class="nf">test_answer</span><span class="p">():</span>
+    <span class="k">assert</span> <span class="n">inc</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span> <span class="o">==</span> <span class="mi">5</span>
+</pre></div>
+</div>
+<p>To execute it:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ pytest
+=========================== test session starts ============================
+platform linux -- Python 3.x.y, pytest-3.x.y, py-1.x.y, pluggy-0.x.y
+rootdir: $REGENDOC_TMPDIR, inifile:
+collected 1 item
+
+test_sample.py F                                                     [100%]
+
+================================= FAILURES =================================
+_______________________________ test_answer ________________________________
+
+    def test_answer():
+&gt;       assert inc(3) == 5
+E       assert 4 == 5
+E        +  where 4 = inc(3)
+
+test_sample.py:6: AssertionError
+========================= 1 failed in 0.12 seconds =========================
+</pre></div>
+</div>
+<p>Due to <code class="docutils literal notranslate"><span class="pre">pytest</span></code>’s detailed assertion introspection, only plain <code class="docutils literal notranslate"><span class="pre">assert</span></code> statements are used.
+See <a class="reference internal" href="getting-started.html#getstarted"><span class="std std-ref">Getting Started</span></a> for more examples.</p>
+<div class="section" id="id1">
+<h2>Features<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>Detailed info on failing <a class="reference internal" href="assert.html#assert"><span class="std std-ref">assert statements</span></a> (no need to remember <code class="docutils literal notranslate"><span class="pre">self.assert*</span></code> names);</li>
+<li><a class="reference internal" href="goodpractices.html#test-discovery"><span class="std std-ref">Auto-discovery</span></a> of test modules and functions;</li>
+<li><a class="reference internal" href="fixture.html#fixture"><span class="std std-ref">Modular fixtures</span></a> for managing small or parametrized long-lived test resources;</li>
+<li>Can run <a class="reference internal" href="unittest.html#unittest"><span class="std std-ref">unittest</span></a> (including trial) and <a class="reference internal" href="nose.html#noseintegration"><span class="std std-ref">nose</span></a> test suites out of the box;</li>
+<li>Python 2.7, Python 3.4+, PyPy 2.3, Jython 2.5 (untested);</li>
+<li>Rich plugin architecture, with over 315+ <a class="reference external" href="http://plugincompat.herokuapp.com">external plugins</a> and thriving community;</li>
+</ul>
+</div>
+<div class="section" id="documentation">
+<h2>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h2>
+<p>Please see <a class="reference internal" href="contents.html#toc"><span class="std std-ref">Contents</span></a> for full documentation, including installation, tutorials and PDF documents.</p>
+</div>
+<div class="section" id="bugs-requests">
+<h2>Bugs/Requests<a class="headerlink" href="#bugs-requests" title="Permalink to this headline">¶</a></h2>
+<p>Please use the <a class="reference external" href="https://github.com/pytest-dev/pytest/issues">GitHub issue tracker</a> to submit bugs or request features.</p>
+</div>
+<div class="section" id="changelog">
+<h2>Changelog<a class="headerlink" href="#changelog" title="Permalink to this headline">¶</a></h2>
+<p>Consult the <a class="reference internal" href="changelog.html#changelog"><span class="std std-ref">Changelog</span></a> page for fixes and enhancements of each version.</p>
+</div>
+<div class="section" id="license">
+<h2>License<a class="headerlink" href="#license" title="Permalink to this headline">¶</a></h2>
+<p>Copyright Holger Krekel and others, 2004-2017.</p>
+<p>Distributed under the terms of the <a class="reference external" href="https://github.com/pytest-dev/pytest/blob/master/LICENSE">MIT</a> license, pytest is free and open source software.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

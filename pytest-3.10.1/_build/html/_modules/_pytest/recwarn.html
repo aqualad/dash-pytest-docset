@@ -1,0 +1,309 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.recwarn &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.recwarn</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; recording warnings during test function execution. &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">warnings</span>
+
+<span class="kn">import</span> <span class="nn">six</span>
+
+<span class="kn">import</span> <span class="nn">_pytest._code</span>
+<span class="kn">from</span> <span class="nn">_pytest.fixtures</span> <span class="kn">import</span> <span class="n">yield_fixture</span>
+<span class="kn">from</span> <span class="nn">_pytest.outcomes</span> <span class="kn">import</span> <span class="n">fail</span>
+
+
+<div class="viewcode-block" id="recwarn"><a class="viewcode-back" href="../../reference.html#pytest.recwarn">[docs]</a><span class="nd">@yield_fixture</span>
+<span class="k">def</span> <span class="nf">recwarn</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Return a :class:`WarningsRecorder` instance that records all warnings emitted by test functions.</span>
+
+<span class="sd">    See http://docs.python.org/library/warnings.html for information</span>
+<span class="sd">    on warning categories.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">wrec</span> <span class="o">=</span> <span class="n">WarningsRecorder</span><span class="p">()</span>
+    <span class="k">with</span> <span class="n">wrec</span><span class="p">:</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;default&quot;</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">wrec</span></div>
+
+
+<div class="viewcode-block" id="deprecated_call"><a class="viewcode-back" href="../../reference.html#pytest.deprecated_call">[docs]</a><span class="k">def</span> <span class="nf">deprecated_call</span><span class="p">(</span><span class="n">func</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;context manager that can be used to ensure a block of code triggers a</span>
+<span class="sd">    ``DeprecationWarning`` or ``PendingDeprecationWarning``::</span>
+
+<span class="sd">        &gt;&gt;&gt; import warnings</span>
+<span class="sd">        &gt;&gt;&gt; def api_call_v2():</span>
+<span class="sd">        ...     warnings.warn(&#39;use v3 of this api&#39;, DeprecationWarning)</span>
+<span class="sd">        ...     return 200</span>
+
+<span class="sd">        &gt;&gt;&gt; with deprecated_call():</span>
+<span class="sd">        ...    assert api_call_v2() == 200</span>
+
+<span class="sd">    ``deprecated_call`` can also be used by passing a function and ``*args`` and ``*kwargs``,</span>
+<span class="sd">    in which case it will ensure calling ``func(*args, **kwargs)`` produces one of the warnings</span>
+<span class="sd">    types above.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">if</span> <span class="n">func</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">args</span> <span class="o">=</span> <span class="p">(</span><span class="n">func</span><span class="p">,)</span> <span class="o">+</span> <span class="n">args</span>
+    <span class="k">return</span> <span class="n">warns</span><span class="p">((</span><span class="ne">DeprecationWarning</span><span class="p">,</span> <span class="ne">PendingDeprecationWarning</span><span class="p">),</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="warns"><a class="viewcode-back" href="../../reference.html#pytest.warns">[docs]</a><span class="k">def</span> <span class="nf">warns</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sa">r</span><span class="sd">&quot;&quot;&quot;Assert that code raises a particular class of warning.</span>
+
+<span class="sd">    Specifically, the parameter ``expected_warning`` can be a warning class or</span>
+<span class="sd">    sequence of warning classes, and the inside the ``with`` block must issue a warning of that class or</span>
+<span class="sd">    classes.</span>
+
+<span class="sd">    This helper produces a list of :class:`warnings.WarningMessage` objects,</span>
+<span class="sd">    one for each warning raised.</span>
+
+<span class="sd">    This function can be used as a context manager, or any of the other ways</span>
+<span class="sd">    ``pytest.raises`` can be used::</span>
+
+<span class="sd">        &gt;&gt;&gt; with warns(RuntimeWarning):</span>
+<span class="sd">        ...    warnings.warn(&quot;my warning&quot;, RuntimeWarning)</span>
+
+<span class="sd">    In the context manager form you may use the keyword argument ``match`` to assert</span>
+<span class="sd">    that the exception matches a text or regex::</span>
+
+<span class="sd">        &gt;&gt;&gt; with warns(UserWarning, match=&#39;must be 0 or None&#39;):</span>
+<span class="sd">        ...     warnings.warn(&quot;value must be 0 or None&quot;, UserWarning)</span>
+
+<span class="sd">        &gt;&gt;&gt; with warns(UserWarning, match=r&#39;must be \d+$&#39;):</span>
+<span class="sd">        ...     warnings.warn(&quot;value must be 42&quot;, UserWarning)</span>
+
+<span class="sd">        &gt;&gt;&gt; with warns(UserWarning, match=r&#39;must be \d+$&#39;):</span>
+<span class="sd">        ...     warnings.warn(&quot;this is not here&quot;, UserWarning)</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">          ...</span>
+<span class="sd">        Failed: DID NOT WARN. No warnings of type ...UserWarning... was emitted...</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">match_expr</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">args</span><span class="p">:</span>
+        <span class="k">if</span> <span class="s2">&quot;match&quot;</span> <span class="ow">in</span> <span class="n">kwargs</span><span class="p">:</span>
+            <span class="n">match_expr</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">&quot;match&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">WarningsChecker</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">,</span> <span class="n">match_expr</span><span class="o">=</span><span class="n">match_expr</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="n">code</span><span class="p">,</span> <span class="o">=</span> <span class="n">args</span>
+        <span class="k">assert</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="nb">str</span><span class="p">)</span>
+        <span class="n">frame</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">loc</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">with</span> <span class="n">WarningsChecker</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">,</span> <span class="n">match_expr</span><span class="o">=</span><span class="n">match_expr</span><span class="p">):</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="n">code</span><span class="p">)</span><span class="o">.</span><span class="n">compile</span><span class="p">()</span>
+            <span class="n">six</span><span class="o">.</span><span class="n">exec_</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">,</span> <span class="n">loc</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">func</span> <span class="o">=</span> <span class="n">args</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">with</span> <span class="n">WarningsChecker</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">,</span> <span class="n">match_expr</span><span class="o">=</span><span class="n">match_expr</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">func</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="WarningsRecorder"><a class="viewcode-back" href="../../reference.html#pytest.WarningsRecorder">[docs]</a><span class="k">class</span> <span class="nc">WarningsRecorder</span><span class="p">(</span><span class="n">warnings</span><span class="o">.</span><span class="n">catch_warnings</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;A context manager to record raised warnings.</span>
+
+<span class="sd">    Adapted from `warnings.catch_warnings`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WarningsRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">record</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_entered</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_list</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The list of recorded warnings.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_list</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">i</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Get a recorded warning by index.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Iterate through the recorded warnings.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;The number of recorded warnings.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="p">)</span>
+
+<div class="viewcode-block" id="WarningsRecorder.pop"><a class="viewcode-back" href="../../reference.html#pytest.WarningsRecorder.pop">[docs]</a>    <span class="k">def</span> <span class="nf">pop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">cls</span><span class="o">=</span><span class="ne">Warning</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Pop the first recorded warning, raise exception if not exists.&quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">w</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">w</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="bp">cls</span><span class="p">):</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">raise</span> <span class="ne">AssertionError</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%r</span><span class="s2"> not found in warning list&quot;</span> <span class="o">%</span> <span class="bp">cls</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="WarningsRecorder.clear"><a class="viewcode-back" href="../../reference.html#pytest.WarningsRecorder.clear">[docs]</a>    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Clear the list of recorded warnings.&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_list</span><span class="p">[:]</span> <span class="o">=</span> <span class="p">[]</span></div>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entered</span><span class="p">:</span>
+            <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Cannot enter </span><span class="si">%r</span><span class="s2"> twice&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_list</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">WarningsRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__enter__</span><span class="p">()</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">simplefilter</span><span class="p">(</span><span class="s2">&quot;always&quot;</span><span class="p">)</span>
+        <span class="c1"># python3 keeps track of a &quot;filter version&quot;, when the filters are</span>
+        <span class="c1"># updated previously seen warnings can be re-warned.  python2 has no</span>
+        <span class="c1"># concept of this so we must reset the warnings registry manually.</span>
+        <span class="c1"># trivial patching of `warnings.warn` seems to be enough somehow?</span>
+        <span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY2</span><span class="p">:</span>
+
+            <span class="k">def</span> <span class="nf">warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">category</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stacklevel</span><span class="o">=</span><span class="mi">1</span><span class="p">):</span>
+                <span class="c1"># duplicate the stdlib logic due to</span>
+                <span class="c1"># bad handing in the c version of warnings</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="ne">Warning</span><span class="p">):</span>
+                    <span class="n">category</span> <span class="o">=</span> <span class="n">message</span><span class="o">.</span><span class="vm">__class__</span>
+                <span class="c1"># Check category argument</span>
+                <span class="k">if</span> <span class="n">category</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">category</span> <span class="o">=</span> <span class="ne">UserWarning</span>
+                <span class="k">assert</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">category</span><span class="p">,</span> <span class="ne">Warning</span><span class="p">)</span>
+
+                <span class="c1"># emulate resetting the warn registry</span>
+                <span class="n">f_globals</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">_getframe</span><span class="p">(</span><span class="n">stacklevel</span><span class="p">)</span><span class="o">.</span><span class="n">f_globals</span>
+                <span class="k">if</span> <span class="s2">&quot;__warningregistry__&quot;</span> <span class="ow">in</span> <span class="n">f_globals</span><span class="p">:</span>
+                    <span class="n">orig</span> <span class="o">=</span> <span class="n">f_globals</span><span class="p">[</span><span class="s2">&quot;__warningregistry__&quot;</span><span class="p">]</span>
+                    <span class="n">f_globals</span><span class="p">[</span><span class="s2">&quot;__warningregistry__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saved_warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">stacklevel</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+                    <span class="k">finally</span><span class="p">:</span>
+                        <span class="n">f_globals</span><span class="p">[</span><span class="s2">&quot;__warningregistry__&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">orig</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saved_warn</span><span class="p">(</span><span class="n">message</span><span class="p">,</span> <span class="n">category</span><span class="p">,</span> <span class="n">stacklevel</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saved_warn</span> <span class="o">=</span> <span class="n">warn</span><span class="p">,</span> <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">exc_info</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_entered</span><span class="p">:</span>
+            <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Cannot exit </span><span class="si">%r</span><span class="s2"> without entering first&quot;</span> <span class="o">%</span> <span class="bp">self</span><span class="p">)</span>
+        <span class="c1"># see above where `self._saved_warn` is assigned</span>
+        <span class="k">if</span> <span class="n">six</span><span class="o">.</span><span class="n">PY2</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saved_warn</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WarningsRecorder</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="o">*</span><span class="n">exc_info</span><span class="p">)</span></div>
+
+
+<span class="k">class</span> <span class="nc">WarningsChecker</span><span class="p">(</span><span class="n">WarningsRecorder</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">expected_warning</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">match_expr</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WarningsChecker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+
+        <span class="n">msg</span> <span class="o">=</span> <span class="s2">&quot;exceptions must be old-style classes or derived from Warning, not </span><span class="si">%s</span><span class="s2">&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">exc</span> <span class="ow">in</span> <span class="n">expected_warning</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">exc</span><span class="p">):</span>
+                    <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">exc</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">):</span>
+            <span class="n">expected_warning</span> <span class="o">=</span> <span class="p">(</span><span class="n">expected_warning</span><span class="p">,)</span>
+        <span class="k">elif</span> <span class="n">expected_warning</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span> <span class="o">%</span> <span class="nb">type</span><span class="p">(</span><span class="n">expected_warning</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span> <span class="o">=</span> <span class="n">expected_warning</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span> <span class="o">=</span> <span class="n">match_expr</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">exc_info</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">WarningsChecker</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__exit__</span><span class="p">(</span><span class="o">*</span><span class="n">exc_info</span><span class="p">)</span>
+
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="c1"># only check if we&#39;re not currently handling an exception</span>
+        <span class="k">if</span> <span class="nb">all</span><span class="p">(</span><span class="n">a</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">a</span> <span class="ow">in</span> <span class="n">exc_info</span><span class="p">):</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="ow">not</span> <span class="nb">any</span><span class="p">(</span><span class="nb">issubclass</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span><span class="p">)</span> <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">):</span>
+                    <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">fail</span><span class="p">(</span>
+                        <span class="s2">&quot;DID NOT WARN. No warnings of type </span><span class="si">{}</span><span class="s2"> was emitted. &quot;</span>
+                        <span class="s2">&quot;The list of emitted warnings is: </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span><span class="p">,</span> <span class="p">[</span><span class="n">each</span><span class="o">.</span><span class="n">message</span> <span class="k">for</span> <span class="n">each</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">]</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="nb">issubclass</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">category</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span><span class="p">):</span>
+                            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span><span class="p">)</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">message</span><span class="p">)):</span>
+                                <span class="k">break</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">fail</span><span class="p">(</span>
+                            <span class="s2">&quot;DID NOT WARN. No warnings of type </span><span class="si">{}</span><span class="s2"> matching&quot;</span>
+                            <span class="s2">&quot; (&#39;</span><span class="si">{}</span><span class="s2">&#39;) was emitted. The list of emitted warnings&quot;</span>
+                            <span class="s2">&quot; is: </span><span class="si">{}</span><span class="s2">.&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">expected_warning</span><span class="p">,</span>
+                                <span class="bp">self</span><span class="o">.</span><span class="n">match_expr</span><span class="p">,</span>
+                                <span class="p">[</span><span class="n">each</span><span class="o">.</span><span class="n">message</span> <span class="k">for</span> <span class="n">each</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">],</span>
+                            <span class="p">)</span>
+                        <span class="p">)</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,200 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Some Issues and Questions &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Contact channels" href="contact.html" />
+    <link rel="prev" title="Project examples" href="projects.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="contact.html" title="Contact channels"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="projects.html" title="Project examples"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="some-issues-and-questions">
+<h1>Some Issues and Questions<a class="headerlink" href="#some-issues-and-questions" title="Permalink to this headline">¶</a></h1>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">This FAQ is here only mostly for historic reasons.  Checkout
+<a class="reference external" href="http://stackoverflow.com/search?q=pytest">pytest Q&amp;A at Stackoverflow</a>
+for many questions and answers related to pytest and/or use
+<a class="reference internal" href="contact.html#contact-channels"><span class="std std-ref">Contact channels</span></a> to get help.</p>
+</div>
+<div class="section" id="on-naming-nosetests-licensing-and-magic">
+<h2>On naming, nosetests, licensing and magic<a class="headerlink" href="#on-naming-nosetests-licensing-and-magic" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="how-does-pytest-relate-to-nose-and-unittest">
+<h3>How does pytest relate to nose and unittest?<a class="headerlink" href="#how-does-pytest-relate-to-nose-and-unittest" title="Permalink to this headline">¶</a></h3>
+<p><code class="docutils literal notranslate"><span class="pre">pytest</span></code> and <a class="reference external" href="https://nose.readthedocs.io/en/latest/">nose</a> share basic philosophy when it comes
+to running and writing Python tests.  In fact, you can run many tests
+written for nose with <code class="docutils literal notranslate"><span class="pre">pytest</span></code>.  <a class="reference external" href="https://nose.readthedocs.io/en/latest/">nose</a> was originally created
+as a clone of <code class="docutils literal notranslate"><span class="pre">pytest</span></code> when <code class="docutils literal notranslate"><span class="pre">pytest</span></code> was in the <code class="docutils literal notranslate"><span class="pre">0.8</span></code> release
+cycle.  Note that starting with pytest-2.0 support for running unittest
+test suites is majorly improved.</p>
+</div>
+<div class="section" id="how-does-pytest-relate-to-twisted-s-trial">
+<h3>how does pytest relate to twisted’s trial?<a class="headerlink" href="#how-does-pytest-relate-to-twisted-s-trial" title="Permalink to this headline">¶</a></h3>
+<p>Since some time <code class="docutils literal notranslate"><span class="pre">pytest</span></code> has builtin support for supporting tests
+written using trial. It does not itself start a reactor, however,
+and does not handle Deferreds returned from a test in pytest style.
+If you are using trial’s unittest.TestCase chances are that you can
+just run your tests even if you return Deferreds.  In addition,
+there also is a dedicated <a class="reference external" href="https://pypi.org/project/pytest-twisted/">pytest-twisted</a> plugin which allows you to
+return deferreds from pytest-style tests, allowing the use of
+<a class="reference internal" href="fixture.html#fixtures"><span class="std std-ref">pytest fixtures: explicit, modular, scalable</span></a> and other features.</p>
+</div>
+<div class="section" id="how-does-pytest-work-with-django">
+<h3>how does pytest work with Django?<a class="headerlink" href="#how-does-pytest-work-with-django" title="Permalink to this headline">¶</a></h3>
+<p>In 2012, some work is going into the <a class="reference external" href="https://pypi.org/project/pytest-django/">pytest-django plugin</a>.  It substitutes the usage of Django’s
+<code class="docutils literal notranslate"><span class="pre">manage.py</span> <span class="pre">test</span></code> and allows the use of all pytest <a class="reference external" href="features.html">features</a> most of which
+are not available from Django directly.</p>
+</div>
+<div class="section" id="what-s-this-magic-with-pytest-historic-notes">
+<h3>What’s this “magic” with pytest? (historic notes)<a class="headerlink" href="#what-s-this-magic-with-pytest-historic-notes" title="Permalink to this headline">¶</a></h3>
+<p>Around 2007 (version <code class="docutils literal notranslate"><span class="pre">0.8</span></code>) some people thought that <code class="docutils literal notranslate"><span class="pre">pytest</span></code>
+was using too much “magic”.  It had been part of the <a class="reference external" href="https://py.readthedocs.io/en/latest/">pylib</a> which
+contains a lot of unrelated python library code.  Around 2010 there
+was a major cleanup refactoring, which removed unused or deprecated code
+and resulted in the new <code class="docutils literal notranslate"><span class="pre">pytest</span></code> PyPI package which strictly contains
+only test-related code.  This release also brought a complete pluginification
+such that the core is around 300 lines of code and everything else is
+implemented in plugins.  Thus <code class="docutils literal notranslate"><span class="pre">pytest</span></code> today is a small, universally runnable
+and customizable testing framework for Python.   Note, however, that
+<code class="docutils literal notranslate"><span class="pre">pytest</span></code> uses metaprogramming techniques and reading its source is
+thus likely not something for Python beginners.</p>
+<p>A second “magic” issue was the assert statement debugging feature.
+Nowadays, <code class="docutils literal notranslate"><span class="pre">pytest</span></code> explicitly rewrites assert statements in test modules
+in order to provide more useful <a class="reference internal" href="assert.html#assertfeedback"><span class="std std-ref">assert feedback</span></a>.
+This completely avoids previous issues of confusing assertion-reporting.
+It also means, that you can use Python’s <code class="docutils literal notranslate"><span class="pre">-O</span></code> optimization without losing
+assertions in test modules.</p>
+<p>You can also turn off all assertion interaction using the
+<code class="docutils literal notranslate"><span class="pre">--assert=plain</span></code> option.</p>
+</div>
+<div class="section" id="why-can-i-use-both-pytest-and-py-test-commands">
+<h3>Why can I use both <code class="docutils literal notranslate"><span class="pre">pytest</span></code> and <code class="docutils literal notranslate"><span class="pre">py.test</span></code> commands?<a class="headerlink" href="#why-can-i-use-both-pytest-and-py-test-commands" title="Permalink to this headline">¶</a></h3>
+<p>pytest used to be part of the py package, which provided several developer
+utilities, all starting with <code class="docutils literal notranslate"><span class="pre">py.&lt;TAB&gt;</span></code>, thus providing nice TAB-completion.
+If you install <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">pycmd</span></code> you get these tools from a separate
+package. Once <code class="docutils literal notranslate"><span class="pre">pytest</span></code> became a separate package, the <code class="docutils literal notranslate"><span class="pre">py.test</span></code> name was
+retained due to avoid a naming conflict with another tool. This conflict was
+eventually resolved, and the <code class="docutils literal notranslate"><span class="pre">pytest</span></code> command was therefore introduced. In
+future versions of pytest, we may deprecate and later remove the <code class="docutils literal notranslate"><span class="pre">py.test</span></code>
+command to avoid perpetuating the confusion.</p>
+</div>
+</div>
+<div class="section" id="pytest-fixtures-parametrized-tests">
+<h2>pytest fixtures, parametrized tests<a class="headerlink" href="#pytest-fixtures-parametrized-tests" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="is-using-pytest-fixtures-versus-xunit-setup-a-style-question">
+<h3>Is using pytest fixtures versus xUnit setup a style question?<a class="headerlink" href="#is-using-pytest-fixtures-versus-xunit-setup-a-style-question" title="Permalink to this headline">¶</a></h3>
+<p>For simple applications and for people experienced with <a class="reference external" href="https://nose.readthedocs.io/en/latest/">nose</a> or
+unittest-style test setup using <a class="reference external" href="xunit_setup.html">xUnit style setup</a> probably
+feels natural.  For larger test suites, parametrized testing
+or setup of complex test resources using <a class="reference external" href="fixture.html">fixtures</a> may feel more natural.
+Moreover, fixtures are ideal for writing advanced test support
+code (like e.g. the <a class="reference external" href="monkeypatch.html">monkeypatch</a>, the <a class="reference external" href="tmpdir.html">tmpdir</a> or <a class="reference external" href="capture.html">capture</a> fixtures)
+because the support code can register setup/teardown functions
+in a managed class/module/function scope.</p>
+</div>
+<div class="section" id="can-i-yield-multiple-values-from-a-fixture-function">
+<h3>Can I yield multiple values from a fixture function?<a class="headerlink" href="#can-i-yield-multiple-values-from-a-fixture-function" title="Permalink to this headline">¶</a></h3>
+<p>There are two conceptual reasons why yielding from a factory function
+is not possible:</p>
+<ul class="simple">
+<li>If multiple factories yielded values there would
+be no natural place to determine the combination
+policy - in real-world examples some combinations
+often should not run.</li>
+<li>Calling factories for obtaining test function arguments
+is part of setting up and running a test.  At that
+point it is not possible to add new test calls to
+the test collection anymore.</li>
+</ul>
+<p>However, with pytest-2.3 you can use the <a class="reference internal" href="fixture.html#pytest-fixture"><span class="std std-ref">Fixtures as Function arguments</span></a> decorator
+and specify <code class="docutils literal notranslate"><span class="pre">params</span></code> so that all tests depending on the factory-created
+resource will run multiple times with different parameters.</p>
+<p>You can also use the <code class="docutils literal notranslate"><span class="pre">pytest_generate_tests</span></code> hook to
+implement the <a class="reference external" href="http://tetamap.wordpress.com/2009/05/13/parametrizing-python-tests-generalized/">parametrization scheme of your choice</a>. See also
+<a class="reference internal" href="example/parametrize.html#paramexamples"><span class="std std-ref">Parametrizing tests</span></a> for more examples.</p>
+</div>
+</div>
+<div class="section" id="pytest-interaction-with-other-packages">
+<h2>pytest interaction with other packages<a class="headerlink" href="#pytest-interaction-with-other-packages" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="issues-with-pytest-multiprocess-and-setuptools">
+<h3>Issues with pytest, multiprocess and setuptools?<a class="headerlink" href="#issues-with-pytest-multiprocess-and-setuptools" title="Permalink to this headline">¶</a></h3>
+<p>On Windows the multiprocess package will instantiate sub processes
+by pickling and thus implicitly re-import a lot of local modules.
+Unfortunately, setuptools-0.6.11 does not <code class="docutils literal notranslate"><span class="pre">if</span> <span class="pre">__name__=='__main__'</span></code>
+protect its generated command line script.  This leads to infinite
+recursion when running a test that instantiates Processes.</p>
+<p>As of mid-2013, there shouldn’t be a problem anymore when you
+use the standard setuptools (note that distribute has been merged
+back into setuptools which is now shipped directly with virtualenv).</p>
+</div>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="contact.html" title="Contact channels"
+             >next</a></li>
+        <li class="right" >
+          <a href="projects.html" title="Project examples"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

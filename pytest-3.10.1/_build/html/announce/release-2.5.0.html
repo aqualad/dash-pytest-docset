@@ -1,0 +1,251 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.5.0: now down to ZERO reported bugs! &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.4.2: colorama on windows, plugin/tmpdir fixes" href="release-2.4.2.html" />
+    <link rel="prev" title="pytest-2.5.1: fixes and new home page styling" href="release-2.5.1.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.4.2.html" title="pytest-2.4.2: colorama on windows, plugin/tmpdir fixes"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.5.1.html" title="pytest-2.5.1: fixes and new home page styling"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-5-0-now-down-to-zero-reported-bugs">
+<h1>pytest-2.5.0: now down to ZERO reported bugs!<a class="headerlink" href="#pytest-2-5-0-now-down-to-zero-reported-bugs" title="Permalink to this headline">¶</a></h1>
+<p>pytest-2.5.0 is a big fixing release, the result of two community bug
+fixing days plus numerous additional works from many people and
+reporters.  The release should be fully compatible to 2.4.2, existing
+plugins and test suites.  We aim at maintaining this level of ZERO reported
+bugs because it’s no fun if your testing tool has bugs, is it?  Under a
+condition, though: when submitting a bug report please provide
+clear information about the circumstances and a simple example which
+reproduces the problem.</p>
+<p>The issue tracker is of course not empty now.  We have many remaining
+“enhacement” issues which we’ll hopefully can tackle in 2014 with your
+help.</p>
+<p>For those who use older Python versions, please note that pytest is not
+automatically tested on python2.5 due to virtualenv, setuptools and tox
+not supporting it anymore.  Manual verification shows that it mostly
+works fine but it’s not going to be part of the automated release
+process and thus likely to break in the future.</p>
+<p>As usual, current docs are at</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>and you can upgrade from pypi via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Particular thanks for helping with this release go to Anatoly Bubenkoff,
+Floris Bruynooghe, Marc Abramowitz, Ralph Schmitt, Ronny Pfannschmidt,
+Donald Stufft, James Lan, Rob Dennis, Jason R. Coombs, Mathieu Agopian,
+Virgil Dupras, Bruno Oliveira, Alex Gaynor and others.</p>
+<p>have fun,
+holger krekel</p>
+<div class="section" id="id1">
+<h2>2.5.0<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h2>
+<ul>
+<li><p class="first">dropped python2.5 from automated release testing of pytest itself
+which means it’s probably going to break soon (but still works
+with this release we believe).</p>
+</li>
+<li><p class="first">simplified and fixed implementation for calling finalizers when
+parametrized fixtures or function arguments are involved.  finalization
+is now performed lazily at setup time instead of in the “teardown phase”.
+While this might sound odd at first, it helps to ensure that we are
+correctly handling setup/teardown even in complex code.  User-level code
+should not be affected unless it’s implementing the pytest_runtest_teardown
+hook and expecting certain fixture instances are torn down within (very
+unlikely and would have been unreliable anyway).</p>
+</li>
+<li><p class="first">PR90: add –color=yes|no|auto option to force terminal coloring
+mode (“auto” is default).  Thanks Marc Abramowitz.</p>
+</li>
+<li><p class="first">fix issue319 - correctly show unicode in assertion errors.  Many
+thanks to Floris Bruynooghe for the complete PR.  Also means
+we depend on py&gt;=1.4.19 now.</p>
+</li>
+<li><p class="first">fix issue396 - correctly sort and finalize class-scoped parametrized
+tests independently from number of methods on the class.</p>
+</li>
+<li><p class="first">refix issue323 in a better way – parametrization should now never
+cause Runtime Recursion errors because the underlying algorithm
+for re-ordering tests per-scope/per-fixture is not recursive
+anymore (it was tail-call recursive before which could lead
+to problems for more than &gt;966 non-function scoped parameters).</p>
+</li>
+<li><p class="first">fix issue290 - there is preliminary support now for parametrizing
+with repeated same values (sometimes useful to test if calling
+a second time works as with the first time).</p>
+</li>
+<li><p class="first">close issue240 - document precisely how pytest module importing
+works, discuss the two common test directory layouts, and how it
+interacts with PEP420-namespace packages.</p>
+</li>
+<li><p class="first">fix issue246 fix finalizer order to be LIFO on independent fixtures
+depending on a parametrized higher-than-function scoped fixture.
+(was quite some effort so please bear with the complexity of this sentence :)
+Thanks Ralph Schmitt for the precise failure example.</p>
+</li>
+<li><p class="first">fix issue244 by implementing special index for parameters to only use
+indices for paramentrized test ids</p>
+</li>
+<li><p class="first">fix issue287 by running all finalizers but saving the exception
+from the first failing finalizer and re-raising it so teardown will
+still have failed.  We reraise the first failing exception because
+it might be the cause for other finalizers to fail.</p>
+</li>
+<li><p class="first">fix ordering when mock.patch or other standard decorator-wrappings
+are used with test methods.  This fixues issue346 and should
+help with random “xdist” collection failures.  Thanks to
+Ronny Pfannschmidt and Donald Stufft for helping to isolate it.</p>
+</li>
+<li><p class="first">fix issue357 - special case “-k” expressions to allow for
+filtering with simple strings that are not valid python expressions.
+Examples: “-k 1.3” matches all tests parametrized with 1.3.
+“-k None” filters all tests that have “None” in their name
+and conversely “-k ‘not None’”.
+Previously these examples would raise syntax errors.</p>
+</li>
+<li><p class="first">fix issue384 by removing the trial support code
+since the unittest compat enhancements allow
+trial to handle it on its own</p>
+</li>
+<li><p class="first">don’t hide an ImportError when importing a plugin produces one.
+fixes issue375.</p>
+</li>
+<li><p class="first">fix issue275 - allow usefixtures and autouse fixtures
+for running doctest text files.</p>
+</li>
+<li><p class="first">fix issue380 by making –resultlog only rely on longrepr instead
+of the “reprcrash” attribute which only exists sometimes.</p>
+</li>
+<li><p class="first">address issue122: allow &#64;pytest.fixture(params=iterator) by exploding
+into a list early on.</p>
+</li>
+<li><p class="first">fix pexpect-3.0 compatibility for pytest’s own tests.
+(fixes issue386)</p>
+</li>
+<li><p class="first">allow nested parametrize-value markers, thanks James Lan for the PR.</p>
+</li>
+<li><p class="first">fix unicode handling with new monkeypatch.setattr(import_path, value)
+API.  Thanks Rob Dennis.  Fixes issue371.</p>
+</li>
+<li><p class="first">fix unicode handling with junitxml, fixes issue368.</p>
+</li>
+<li><p class="first">In assertion rewriting mode on Python 2, fix the detection of coding
+cookies. See issue #330.</p>
+</li>
+<li><p class="first">make “–runxfail” turn imperative pytest.xfail calls into no ops
+(it already did neutralize pytest.mark.xfail markers)</p>
+</li>
+<li><p class="first">refine pytest / pkg_resources interactions: The AssertionRewritingHook
+PEP302 compliant loader now registers itself with setuptools/pkg_resources
+properly so that the pkg_resources.resource_stream method works properly.
+Fixes issue366.  Thanks for the investigations and full PR to Jason R. Coombs.</p>
+</li>
+<li><p class="first">pytestconfig fixture is now session-scoped as it is the same object during the
+whole test run.  Fixes issue370.</p>
+</li>
+<li><p class="first">avoid one surprising case of marker malfunction/confusion:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">some</span><span class="p">(</span><span class="k">lambda</span> <span class="n">arg</span><span class="p">:</span> <span class="o">...</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">():</span>
+</pre></div>
+</div>
+<p>would not work correctly because pytest assumes &#64;pytest.mark.some
+gets a function to be decorated already.  We now at least detect if this
+arg is a lambda and thus the example will work.  Thanks Alex Gaynor
+for bringing it up.</p>
+</li>
+<li><p class="first">xfail a test on pypy that checks wrong encoding/ascii (pypy does
+not error out). fixes issue385.</p>
+</li>
+<li><p class="first">internally make varnames() deal with classes’s __init__,
+although it’s not needed by pytest itself atm.  Also
+fix caching.  Fixes issue376.</p>
+</li>
+<li><p class="first">fix issue221 - handle importing of namespace-package with no
+__init__.py properly.</p>
+</li>
+<li><p class="first">refactor internal FixtureRequest handling to avoid monkeypatching.
+One of the positive user-facing effects is that the “request” object
+can now be used in closures.</p>
+</li>
+<li><p class="first">fixed version comparison in pytest.importskip(modname, minverstring)</p>
+</li>
+<li><p class="first">fix issue377 by clarifying in the nose-compat docs that pytest
+does not duplicate the unittest-API into the “plain” namespace.</p>
+</li>
+<li><p class="first">fix verbose reporting for &#64;mock’d test functions</p>
+</li>
+</ul>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.4.2.html" title="pytest-2.4.2: colorama on windows, plugin/tmpdir fixes"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.5.1.html" title="pytest-2.5.1: fixes and new home page styling"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

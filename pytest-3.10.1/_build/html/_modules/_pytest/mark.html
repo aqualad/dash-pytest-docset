@@ -1,0 +1,239 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest.mark &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest.mark</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot; generic mechanism for marking and selecting python functions. &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">from</span> <span class="nn">.legacy</span> <span class="kn">import</span> <span class="n">matchkeyword</span>
+<span class="kn">from</span> <span class="nn">.legacy</span> <span class="kn">import</span> <span class="n">matchmark</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">EMPTY_PARAMETERSET_OPTION</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">get_empty_parameterset_mark</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">Mark</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">MARK_GEN</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">MarkDecorator</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">MarkGenerator</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">MarkInfo</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">ParameterSet</span>
+<span class="kn">from</span> <span class="nn">.structures</span> <span class="kn">import</span> <span class="n">transfer_markers</span>
+<span class="kn">from</span> <span class="nn">_pytest.config</span> <span class="kn">import</span> <span class="n">UsageError</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;Mark&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MarkInfo&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MarkDecorator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;MarkGenerator&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;transfer_markers&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;get_empty_parameterset_mark&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="param"><a class="viewcode-back" href="../../reference.html#pytest.param">[docs]</a><span class="k">def</span> <span class="nf">param</span><span class="p">(</span><span class="o">*</span><span class="n">values</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Specify a parameter in `pytest.mark.parametrize`_ calls or</span>
+<span class="sd">    :ref:`parametrized fixtures &lt;fixture-parametrize-marks&gt;`.</span>
+
+<span class="sd">    .. code-block:: python</span>
+
+<span class="sd">        @pytest.mark.parametrize(&quot;test_input,expected&quot;, [</span>
+<span class="sd">            (&quot;3+5&quot;, 8),</span>
+<span class="sd">            pytest.param(&quot;6*9&quot;, 42, marks=pytest.mark.xfail),</span>
+<span class="sd">        ])</span>
+<span class="sd">        def test_eval(test_input, expected):</span>
+<span class="sd">            assert eval(test_input) == expected</span>
+
+<span class="sd">    :param values: variable args of the values of the parameter set, in order.</span>
+<span class="sd">    :keyword marks: a single mark or a list of marks to be applied to this parameter set.</span>
+<span class="sd">    :keyword str id: the id to attribute to this parameter set.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">ParameterSet</span><span class="o">.</span><span class="n">param</span><span class="p">(</span><span class="o">*</span><span class="n">values</span><span class="p">,</span> <span class="o">**</span><span class="n">kw</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">pytest_addoption</span><span class="p">(</span><span class="n">parser</span><span class="p">):</span>
+    <span class="n">group</span> <span class="o">=</span> <span class="n">parser</span><span class="o">.</span><span class="n">getgroup</span><span class="p">(</span><span class="s2">&quot;general&quot;</span><span class="p">)</span>
+    <span class="n">group</span><span class="o">.</span><span class="n">_addoption</span><span class="p">(</span>
+        <span class="s2">&quot;-k&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;keyword&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;EXPRESSION&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;only run tests which match the given substring expression. &quot;</span>
+        <span class="s2">&quot;An expression is a python evaluatable expression &quot;</span>
+        <span class="s2">&quot;where all names are substring-matched against test names &quot;</span>
+        <span class="s2">&quot;and their parent classes. Example: -k &#39;test_method or test_&quot;</span>
+        <span class="s2">&quot;other&#39; matches all test functions and classes whose name &quot;</span>
+        <span class="s2">&quot;contains &#39;test_method&#39; or &#39;test_other&#39;, while -k &#39;not test_method&#39; &quot;</span>
+        <span class="s2">&quot;matches those that don&#39;t contain &#39;test_method&#39; in their names. &quot;</span>
+        <span class="s2">&quot;Additionally keywords are matched to classes and functions &quot;</span>
+        <span class="s2">&quot;containing extra names in their &#39;extra_keyword_matches&#39; set, &quot;</span>
+        <span class="s2">&quot;as well as functions which have names assigned directly to them.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">group</span><span class="o">.</span><span class="n">_addoption</span><span class="p">(</span>
+        <span class="s2">&quot;-m&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store&quot;</span><span class="p">,</span>
+        <span class="n">dest</span><span class="o">=</span><span class="s2">&quot;markexpr&quot;</span><span class="p">,</span>
+        <span class="n">default</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span>
+        <span class="n">metavar</span><span class="o">=</span><span class="s2">&quot;MARKEXPR&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;only run tests matching given mark expression.  &quot;</span>
+        <span class="s2">&quot;example: -m &#39;mark1 and not mark2&#39;.&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">group</span><span class="o">.</span><span class="n">addoption</span><span class="p">(</span>
+        <span class="s2">&quot;--markers&quot;</span><span class="p">,</span>
+        <span class="n">action</span><span class="o">=</span><span class="s2">&quot;store_true&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;show markers (builtin, plugin and per-project ones).&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="n">parser</span><span class="o">.</span><span class="n">addini</span><span class="p">(</span><span class="s2">&quot;markers&quot;</span><span class="p">,</span> <span class="s2">&quot;markers for test functions&quot;</span><span class="p">,</span> <span class="s2">&quot;linelist&quot;</span><span class="p">)</span>
+    <span class="n">parser</span><span class="o">.</span><span class="n">addini</span><span class="p">(</span><span class="n">EMPTY_PARAMETERSET_OPTION</span><span class="p">,</span> <span class="s2">&quot;default marker for empty parametersets&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_cmdline_main</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="kn">import</span> <span class="nn">_pytest.config</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">markers</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">_do_configure</span><span class="p">()</span>
+        <span class="n">tw</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">create_terminal_writer</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">config</span><span class="o">.</span><span class="n">getini</span><span class="p">(</span><span class="s2">&quot;markers&quot;</span><span class="p">):</span>
+            <span class="n">parts</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;:&quot;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">name</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">rest</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;@pytest.mark.</span><span class="si">%s</span><span class="s2">:&quot;</span> <span class="o">%</span> <span class="n">name</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">rest</span><span class="p">)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">()</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">_ensure_unconfigure</span><span class="p">()</span>
+        <span class="k">return</span> <span class="mi">0</span>
+
+
+<span class="n">pytest_cmdline_main</span><span class="o">.</span><span class="n">tryfirst</span> <span class="o">=</span> <span class="kc">True</span>
+
+
+<span class="k">def</span> <span class="nf">deselect_by_keyword</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+    <span class="n">keywordexpr</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">keyword</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">keywordexpr</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;-&quot;</span><span class="p">):</span>
+        <span class="n">keywordexpr</span> <span class="o">=</span> <span class="s2">&quot;not &quot;</span> <span class="o">+</span> <span class="n">keywordexpr</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="n">selectuntil</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">if</span> <span class="n">keywordexpr</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]</span> <span class="o">==</span> <span class="s2">&quot;:&quot;</span><span class="p">:</span>
+        <span class="n">selectuntil</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">keywordexpr</span> <span class="o">=</span> <span class="n">keywordexpr</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="n">remaining</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">deselected</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">colitem</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">keywordexpr</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">matchkeyword</span><span class="p">(</span><span class="n">colitem</span><span class="p">,</span> <span class="n">keywordexpr</span><span class="p">):</span>
+            <span class="n">deselected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colitem</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">selectuntil</span><span class="p">:</span>
+                <span class="n">keywordexpr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">remaining</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colitem</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">deselected</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">pytest_deselected</span><span class="p">(</span><span class="n">items</span><span class="o">=</span><span class="n">deselected</span><span class="p">)</span>
+        <span class="n">items</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">remaining</span>
+
+
+<span class="k">def</span> <span class="nf">deselect_by_mark</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+    <span class="n">matchexpr</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">markexpr</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">matchexpr</span><span class="p">:</span>
+        <span class="k">return</span>
+
+    <span class="n">remaining</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">deselected</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">matchmark</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="n">matchexpr</span><span class="p">):</span>
+            <span class="n">remaining</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">deselected</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">deselected</span><span class="p">:</span>
+        <span class="n">config</span><span class="o">.</span><span class="n">hook</span><span class="o">.</span><span class="n">pytest_deselected</span><span class="p">(</span><span class="n">items</span><span class="o">=</span><span class="n">deselected</span><span class="p">)</span>
+        <span class="n">items</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">remaining</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_collection_modifyitems</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">config</span><span class="p">):</span>
+    <span class="n">deselect_by_keyword</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+    <span class="n">deselect_by_mark</span><span class="p">(</span><span class="n">items</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_configure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">config</span><span class="o">.</span><span class="n">_old_mark_config</span> <span class="o">=</span> <span class="n">MARK_GEN</span><span class="o">.</span><span class="n">_config</span>
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">option</span><span class="o">.</span><span class="n">strict</span><span class="p">:</span>
+        <span class="n">MARK_GEN</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="n">config</span>
+
+    <span class="n">empty_parameterset</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">getini</span><span class="p">(</span><span class="n">EMPTY_PARAMETERSET_OPTION</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">empty_parameterset</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;skip&quot;</span><span class="p">,</span> <span class="s2">&quot;xfail&quot;</span><span class="p">,</span> <span class="s2">&quot;fail_at_collect&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="n">UsageError</span><span class="p">(</span>
+            <span class="s2">&quot;</span><span class="si">{!s}</span><span class="s2"> must be one of skip, xfail or fail_at_collect&quot;</span>
+            <span class="s2">&quot; but it is </span><span class="si">{!r}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">EMPTY_PARAMETERSET_OPTION</span><span class="p">,</span> <span class="n">empty_parameterset</span><span class="p">)</span>
+        <span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">pytest_unconfigure</span><span class="p">(</span><span class="n">config</span><span class="p">):</span>
+    <span class="n">MARK_GEN</span><span class="o">.</span><span class="n">_config</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">config</span><span class="p">,</span> <span class="s2">&quot;_old_mark_config&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

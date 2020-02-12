@@ -1,0 +1,1120 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>_pytest._code.code &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../../../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../../../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../../../search.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" accesskey="U">Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <h1>Source code for _pytest._code.code</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">absolute_import</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">division</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">print_function</span>
+
+<span class="kn">import</span> <span class="nn">inspect</span>
+<span class="kn">import</span> <span class="nn">pprint</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">traceback</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">CO_VARARGS</span>
+<span class="kn">from</span> <span class="nn">inspect</span> <span class="kn">import</span> <span class="n">CO_VARKEYWORDS</span>
+<span class="kn">from</span> <span class="nn">weakref</span> <span class="kn">import</span> <span class="n">ref</span>
+
+<span class="kn">import</span> <span class="nn">attr</span>
+<span class="kn">import</span> <span class="nn">pluggy</span>
+<span class="kn">import</span> <span class="nn">py</span>
+<span class="kn">import</span> <span class="nn">six</span>
+<span class="kn">from</span> <span class="nn">six</span> <span class="kn">import</span> <span class="n">text_type</span>
+
+<span class="kn">import</span> <span class="nn">_pytest</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">_PY2</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">_PY3</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">PY35</span>
+<span class="kn">from</span> <span class="nn">_pytest.compat</span> <span class="kn">import</span> <span class="n">safe_str</span>
+
+<span class="n">builtin_repr</span> <span class="o">=</span> <span class="nb">repr</span>
+
+<span class="k">if</span> <span class="n">_PY3</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">traceback</span> <span class="kn">import</span> <span class="n">format_exception_only</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">._py2traceback</span> <span class="kn">import</span> <span class="n">format_exception_only</span>
+
+
+<span class="k">class</span> <span class="nc">Code</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; wrapper around Python code objects &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rawcode</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">rawcode</span><span class="p">,</span> <span class="s2">&quot;co_filename&quot;</span><span class="p">):</span>
+            <span class="n">rawcode</span> <span class="o">=</span> <span class="n">getrawcode</span><span class="p">(</span><span class="n">rawcode</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="n">rawcode</span><span class="o">.</span><span class="n">co_filename</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">firstlineno</span> <span class="o">=</span> <span class="n">rawcode</span><span class="o">.</span><span class="n">co_firstlineno</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">rawcode</span><span class="o">.</span><span class="n">co_name</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;not a code object: </span><span class="si">%r</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">rawcode</span><span class="p">,))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw</span> <span class="o">=</span> <span class="n">rawcode</span>
+
+    <span class="k">def</span> <span class="fm">__eq__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">raw</span>
+
+    <span class="fm">__hash__</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__ne__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span> <span class="o">==</span> <span class="n">other</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a path object pointing to source code (note that it</span>
+<span class="sd">        might not point to an actually existing file). &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">co_filename</span><span class="p">)</span>
+            <span class="c1"># maybe don&#39;t try this checking</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">check</span><span class="p">():</span>
+                <span class="k">raise</span> <span class="ne">OSError</span><span class="p">(</span><span class="s2">&quot;py.path check failed.&quot;</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+            <span class="c1"># XXX maybe try harder like the weird logic</span>
+            <span class="c1"># in the standard lib [linecache.updatecache] does?</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">co_filename</span>
+
+        <span class="k">return</span> <span class="n">p</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">fullsource</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a _pytest._code.Source object for the full source file of the code</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span> <span class="nn">_pytest._code</span> <span class="kn">import</span> <span class="n">source</span>
+
+        <span class="n">full</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">findsource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">full</span>
+
+    <span class="k">def</span> <span class="nf">source</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a _pytest._code.Source object for the code object&#39;s source only</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># return source only for that part of code</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="k">return</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">raw</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a tuple with the argument names for the code object</span>
+
+<span class="sd">            if &#39;var&#39; is set True also return the names of the variable and</span>
+<span class="sd">            keyword arguments when present</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># handfull shortcut for getting args</span>
+        <span class="n">raw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">raw</span>
+        <span class="n">argcount</span> <span class="o">=</span> <span class="n">raw</span><span class="o">.</span><span class="n">co_argcount</span>
+        <span class="k">if</span> <span class="n">var</span><span class="p">:</span>
+            <span class="n">argcount</span> <span class="o">+=</span> <span class="n">raw</span><span class="o">.</span><span class="n">co_flags</span> <span class="o">&amp;</span> <span class="n">CO_VARARGS</span>
+            <span class="n">argcount</span> <span class="o">+=</span> <span class="n">raw</span><span class="o">.</span><span class="n">co_flags</span> <span class="o">&amp;</span> <span class="n">CO_VARKEYWORDS</span>
+        <span class="k">return</span> <span class="n">raw</span><span class="o">.</span><span class="n">co_varnames</span><span class="p">[:</span><span class="n">argcount</span><span class="p">]</span>
+
+
+<span class="k">class</span> <span class="nc">Frame</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Wrapper around a Python frame holding f_locals and f_globals</span>
+<span class="sd">    in which expressions can be evaluated.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">frame</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_lineno</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f_globals</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">f_locals</span> <span class="o">=</span> <span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">raw</span> <span class="o">=</span> <span class="n">frame</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">code</span> <span class="o">=</span> <span class="n">Code</span><span class="p">(</span><span class="n">frame</span><span class="o">.</span><span class="n">f_code</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">statement</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; statement this frame is at &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">fullsource</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">fullsource</span><span class="o">.</span><span class="n">getstatement</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lineno</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">eval</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="o">**</span><span class="nb">vars</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; evaluate &#39;code&#39; in the frame</span>
+
+<span class="sd">            &#39;vars&#39; are optional additional local variables</span>
+
+<span class="sd">            returns the result of the evaluation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">f_locals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">f_locals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="k">return</span> <span class="nb">eval</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_globals</span><span class="p">,</span> <span class="n">f_locals</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">exec_</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">code</span><span class="p">,</span> <span class="o">**</span><span class="nb">vars</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; exec &#39;code&#39; in the frame</span>
+
+<span class="sd">            &#39;vars&#39; are optiona; additional local variables</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">f_locals</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_locals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">f_locals</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">vars</span><span class="p">)</span>
+        <span class="n">six</span><span class="o">.</span><span class="n">exec_</span><span class="p">(</span><span class="n">code</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_globals</span><span class="p">,</span> <span class="n">f_locals</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">repr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a &#39;safe&#39; (non-recursive, one-line) string repr for &#39;object&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">py</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">saferepr</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">is_true</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">):</span>
+        <span class="k">return</span> <span class="nb">object</span>
+
+    <span class="k">def</span> <span class="nf">getargs</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">var</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a list of tuples (name, value) for all arguments</span>
+
+<span class="sd">            if &#39;var&#39; is set True also include the variable and keyword</span>
+<span class="sd">            arguments when present</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">retval</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">arg</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">getargs</span><span class="p">(</span><span class="n">var</span><span class="p">):</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">retval</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">arg</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="n">arg</span><span class="p">]))</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">pass</span>  <span class="c1"># this can occur when using Psyco</span>
+        <span class="k">return</span> <span class="n">retval</span>
+
+
+<span class="k">class</span> <span class="nc">TracebackEntry</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; a single entry in a traceback &quot;&quot;&quot;</span>
+
+    <span class="n">_repr_style</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">exprinfo</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rawentry</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="o">=</span> <span class="n">excinfo</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rawentry</span> <span class="o">=</span> <span class="n">rawentry</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="n">rawentry</span><span class="o">.</span><span class="n">tb_lineno</span> <span class="o">-</span> <span class="mi">1</span>
+
+    <span class="k">def</span> <span class="nf">set_repr_style</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">):</span>
+        <span class="k">assert</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;short&quot;</span><span class="p">,</span> <span class="s2">&quot;long&quot;</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_repr_style</span> <span class="o">=</span> <span class="n">mode</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">frame</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="k">return</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Frame</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_rawentry</span><span class="o">.</span><span class="n">tb_frame</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">relline</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">firstlineno</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;TracebackEntry </span><span class="si">%s</span><span class="s2">:</span><span class="si">%d</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">statement</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; _pytest._code.Source object for the current statement &quot;&quot;&quot;</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">fullsource</span>
+        <span class="k">return</span> <span class="n">source</span><span class="o">.</span><span class="n">getstatement</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lineno</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">path</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; path to the source code &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">path</span>
+
+    <span class="k">def</span> <span class="nf">getlocals</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span>
+
+    <span class="nb">locals</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">getlocals</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;locals of underlaying frame&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getfirstlinesource</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># on Jython this firstlineno can be -1 apparently</span>
+        <span class="k">return</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">firstlineno</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getsource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">astcache</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return failing source code. &quot;&quot;&quot;</span>
+        <span class="c1"># we use the passed in astcache to not reparse asttrees</span>
+        <span class="c1"># within exception info printing</span>
+        <span class="kn">from</span> <span class="nn">_pytest._code.source</span> <span class="kn">import</span> <span class="n">getstatementrange_ast</span>
+
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">fullsource</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">astnode</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="n">astcache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">path</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">astnode</span> <span class="o">=</span> <span class="n">astcache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="n">start</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">getfirstlinesource</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">astnode</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">end</span> <span class="o">=</span> <span class="n">getstatementrange_ast</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">astnode</span><span class="o">=</span><span class="n">astnode</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">SyntaxError</span><span class="p">:</span>
+            <span class="n">end</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">astcache</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">astnode</span>
+        <span class="k">return</span> <span class="n">source</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">end</span><span class="p">]</span>
+
+    <span class="n">source</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">getsource</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">ishidden</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return True if the current frame has a var __tracebackhide__</span>
+<span class="sd">            resolving to True</span>
+
+<span class="sd">            If __tracebackhide__ is a callable, it gets called with the</span>
+<span class="sd">            ExceptionInfo instance and can decide whether to hide the traceback.</span>
+
+<span class="sd">            mostly for internal use</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">tbh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">[</span><span class="s2">&quot;__tracebackhide__&quot;</span><span class="p">]</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">tbh</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_globals</span><span class="p">[</span><span class="s2">&quot;__tracebackhide__&quot;</span><span class="p">]</span>
+            <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="n">callable</span><span class="p">(</span><span class="n">tbh</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">tbh</span><span class="p">(</span><span class="kc">None</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">tbh</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">except</span> <span class="n">py</span><span class="o">.</span><span class="n">error</span><span class="o">.</span><span class="n">Error</span><span class="p">:</span>
+            <span class="n">fn</span> <span class="o">=</span> <span class="s2">&quot;???&quot;</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">name</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">statement</span><span class="p">)</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">raise</span>
+        <span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+            <span class="n">line</span> <span class="o">=</span> <span class="s2">&quot;???&quot;</span>
+        <span class="k">return</span> <span class="s2">&quot;  File </span><span class="si">%r</span><span class="s2">:</span><span class="si">%d</span><span class="s2"> in </span><span class="si">%s</span><span class="se">\n</span><span class="s2">  </span><span class="si">%s</span><span class="se">\n</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">line</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">name</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">co_name</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;co_name of underlaying code&quot;</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">Traceback</span><span class="p">(</span><span class="nb">list</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Traceback objects encapsulate and offer higher level</span>
+<span class="sd">        access to Traceback entries.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">Entry</span> <span class="o">=</span> <span class="n">TracebackEntry</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tb</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; initialize from given python traceback object and ExceptionInfo &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="o">=</span> <span class="n">excinfo</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">tb</span><span class="p">,</span> <span class="s2">&quot;tb_next&quot;</span><span class="p">):</span>
+
+            <span class="k">def</span> <span class="nf">f</span><span class="p">(</span><span class="n">cur</span><span class="p">):</span>
+                <span class="k">while</span> <span class="n">cur</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="bp">self</span><span class="o">.</span><span class="n">Entry</span><span class="p">(</span><span class="n">cur</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="n">excinfo</span><span class="p">)</span>
+                    <span class="n">cur</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">tb_next</span>
+
+            <span class="nb">list</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">(</span><span class="n">tb</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">list</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tb</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">cut</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">lineno</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">firstlineno</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">excludepath</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return a Traceback instance wrapping part of this Traceback</span>
+
+<span class="sd">            by provding any combination of path, lineno and firstlineno, the</span>
+<span class="sd">            first frame to start the to-be-returned traceback is determined</span>
+
+<span class="sd">            this allows cutting the first part of a Traceback instance e.g.</span>
+<span class="sd">            for formatting reasons (removing some uninteresting bits that deal</span>
+<span class="sd">            with handling of the exception/traceback)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="bp">self</span><span class="p">:</span>
+            <span class="n">code</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span>
+            <span class="n">codepath</span> <span class="o">=</span> <span class="n">code</span><span class="o">.</span><span class="n">path</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="p">(</span><span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">codepath</span> <span class="o">==</span> <span class="n">path</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span>
+                    <span class="n">excludepath</span> <span class="ow">is</span> <span class="kc">None</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">codepath</span><span class="p">,</span> <span class="s2">&quot;relto&quot;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="ow">not</span> <span class="n">codepath</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">excludepath</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">lineno</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">x</span><span class="o">.</span><span class="n">lineno</span> <span class="o">==</span> <span class="n">lineno</span><span class="p">)</span>
+                <span class="ow">and</span> <span class="p">(</span><span class="n">firstlineno</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">x</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">firstlineno</span> <span class="o">==</span> <span class="n">firstlineno</span><span class="p">)</span>
+            <span class="p">):</span>
+                <span class="k">return</span> <span class="n">Traceback</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">_rawentry</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+        <span class="n">val</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">Traceback</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__getitem__</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="nb">type</span><span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">0</span><span class="p">))):</span>
+            <span class="n">val</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">val</span>
+
+    <span class="k">def</span> <span class="nf">filter</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">fn</span><span class="o">=</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="ow">not</span> <span class="n">x</span><span class="o">.</span><span class="n">ishidden</span><span class="p">()):</span>
+        <span class="sd">&quot;&quot;&quot; return a Traceback instance with certain items removed</span>
+
+<span class="sd">            fn is a function that gets a single argument, a TracebackEntry</span>
+<span class="sd">            instance, and should return True when the item should be added</span>
+<span class="sd">            to the Traceback, False when not</span>
+
+<span class="sd">            by default this removes all the TracebackEntries which are hidden</span>
+<span class="sd">            (see ishidden() above)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Traceback</span><span class="p">(</span><span class="nb">filter</span><span class="p">(</span><span class="n">fn</span><span class="p">,</span> <span class="bp">self</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">getcrashentry</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return last non-hidden traceback entry that lead</span>
+<span class="sd">        to the exception of a traceback.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
+            <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">entry</span><span class="o">.</span><span class="n">ishidden</span><span class="p">():</span>
+                <span class="k">return</span> <span class="n">entry</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">recursionindex</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return the index of the frame/TracebackEntry where recursion</span>
+<span class="sd">            originates if appropriate, None if no recursion occurred</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <span class="c1"># id for the code.raw is needed to work around</span>
+            <span class="c1"># the strange metaprogramming in the decorator lib from pypi</span>
+            <span class="c1"># which generates code objects that have hash/value equality</span>
+            <span class="c1"># XXX needs a test</span>
+            <span class="n">key</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">raw</span><span class="p">),</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span>
+            <span class="c1"># print &quot;checking for recursion at&quot;, key</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="n">cache</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span>
+            <span class="k">if</span> <span class="n">values</span><span class="p">:</span>
+                <span class="n">f</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">frame</span>
+                <span class="n">loc</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">f_locals</span>
+                <span class="k">for</span> <span class="n">otherloc</span> <span class="ow">in</span> <span class="n">values</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">is_true</span><span class="p">(</span>
+                        <span class="n">f</span><span class="o">.</span><span class="n">eval</span><span class="p">(</span>
+                            <span class="n">co_equal</span><span class="p">,</span>
+                            <span class="n">__recursioncache_locals_1</span><span class="o">=</span><span class="n">loc</span><span class="p">,</span>
+                            <span class="n">__recursioncache_locals_2</span><span class="o">=</span><span class="n">otherloc</span><span class="p">,</span>
+                        <span class="p">)</span>
+                    <span class="p">):</span>
+                        <span class="k">return</span> <span class="n">i</span>
+            <span class="n">values</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">f_locals</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+
+<span class="n">co_equal</span> <span class="o">=</span> <span class="nb">compile</span><span class="p">(</span>
+    <span class="s2">&quot;__recursioncache_locals_1 == __recursioncache_locals_2&quot;</span><span class="p">,</span> <span class="s2">&quot;?&quot;</span><span class="p">,</span> <span class="s2">&quot;eval&quot;</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="ExceptionInfo"><a class="viewcode-back" href="../../../reference.html#_pytest._code.ExceptionInfo">[docs]</a><span class="k">class</span> <span class="nc">ExceptionInfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; wraps sys.exc_info() objects and offers</span>
+<span class="sd">        help for navigating the traceback.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">_striptext</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+    <span class="n">_assert_start_repr</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s2">&quot;AssertionError(u&#39;assert &quot;</span> <span class="k">if</span> <span class="n">_PY2</span> <span class="k">else</span> <span class="s2">&quot;AssertionError(&#39;assert &quot;</span>
+    <span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tup</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exprinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="k">if</span> <span class="n">tup</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">tup</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">exc_info</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">exprinfo</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="ne">AssertionError</span><span class="p">):</span>
+                <span class="n">exprinfo</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="s2">&quot;msg&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">exprinfo</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">exprinfo</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">saferepr</span><span class="p">(</span><span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">exprinfo</span> <span class="ow">and</span> <span class="n">exprinfo</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_assert_start_repr</span><span class="p">):</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_striptext</span> <span class="o">=</span> <span class="s2">&quot;AssertionError: &quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_excinfo</span> <span class="o">=</span> <span class="n">tup</span>
+        <span class="c1">#: the exception class</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">tup</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="c1">#: the exception instance</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">value</span> <span class="o">=</span> <span class="n">tup</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="c1">#: the exception raw traceback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tb</span> <span class="o">=</span> <span class="n">tup</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+        <span class="c1">#: the exception type name</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">typename</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="o">.</span><span class="vm">__name__</span>
+        <span class="c1">#: the exception traceback (_pytest._code.Traceback instance)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">traceback</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Traceback</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tb</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="n">ref</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;ExceptionInfo </span><span class="si">%s</span><span class="s2"> tblen=</span><span class="si">%d</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">typename</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">traceback</span><span class="p">))</span>
+
+<div class="viewcode-block" id="ExceptionInfo.exconly"><a class="viewcode-back" href="../../../reference.html#_pytest._code.ExceptionInfo.exconly">[docs]</a>    <span class="k">def</span> <span class="nf">exconly</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tryshort</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return the exception as a string</span>
+
+<span class="sd">            when &#39;tryshort&#39; resolves to True, and the exception is a</span>
+<span class="sd">            _pytest._code._AssertionError, only the actual exception part of</span>
+<span class="sd">            the exception representation is returned (so &#39;AssertionError: &#39; is</span>
+<span class="sd">            removed from the beginning)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="n">format_exception_only</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+        <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="o">.</span><span class="n">rstrip</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">tryshort</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">text</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_striptext</span><span class="p">):</span>
+                <span class="n">text</span> <span class="o">=</span> <span class="n">text</span><span class="p">[</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_striptext</span><span class="p">)</span> <span class="p">:]</span>
+        <span class="k">return</span> <span class="n">text</span></div>
+
+<div class="viewcode-block" id="ExceptionInfo.errisinstance"><a class="viewcode-back" href="../../../reference.html#_pytest._code.ExceptionInfo.errisinstance">[docs]</a>    <span class="k">def</span> <span class="nf">errisinstance</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return True if the exception is an instance of exc &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_getreprcrash</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">exconly</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exconly</span><span class="p">(</span><span class="n">tryshort</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traceback</span><span class="o">.</span><span class="n">getcrashentry</span><span class="p">()</span>
+        <span class="n">path</span><span class="p">,</span> <span class="n">lineno</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">co_filename</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span>
+        <span class="k">return</span> <span class="n">ReprFileLocation</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">exconly</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExceptionInfo.getrepr"><a class="viewcode-back" href="../../../reference.html#_pytest._code.ExceptionInfo.getrepr">[docs]</a>    <span class="k">def</span> <span class="nf">getrepr</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">showlocals</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">style</span><span class="o">=</span><span class="s2">&quot;long&quot;</span><span class="p">,</span>
+        <span class="n">abspath</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">tbfilter</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">funcargs</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">truncate_locals</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">chain</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return str()able representation of this exception info.</span>
+
+<span class="sd">        :param bool showlocals:</span>
+<span class="sd">            Show locals per traceback entry.</span>
+<span class="sd">            Ignored if ``style==&quot;native&quot;``.</span>
+
+<span class="sd">        :param str style: long|short|no|native traceback style</span>
+
+<span class="sd">        :param bool abspath:</span>
+<span class="sd">            If paths should be changed to absolute or left unchanged.</span>
+
+<span class="sd">        :param bool tbfilter:</span>
+<span class="sd">            Hide entries that contain a local variable ``__tracebackhide__==True``.</span>
+<span class="sd">            Ignored if ``style==&quot;native&quot;``.</span>
+
+<span class="sd">        :param bool funcargs:</span>
+<span class="sd">            Show fixtures (&quot;funcargs&quot; for legacy purposes) per traceback entry.</span>
+
+<span class="sd">        :param bool truncate_locals:</span>
+<span class="sd">            With ``showlocals==True``, make sure locals can be safely represented as strings.</span>
+
+<span class="sd">        :param bool chain: if chained exceptions in Python 3 should be shown.</span>
+
+<span class="sd">        .. versionchanged:: 3.9</span>
+
+<span class="sd">            Added the ``chain`` parameter.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;native&quot;</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ReprExceptionInfo</span><span class="p">(</span>
+                <span class="n">ReprTracebackNative</span><span class="p">(</span>
+                    <span class="n">traceback</span><span class="o">.</span><span class="n">format_exception</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">traceback</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">_rawentry</span>
+                    <span class="p">)</span>
+                <span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_getreprcrash</span><span class="p">(),</span>
+            <span class="p">)</span>
+
+        <span class="n">fmt</span> <span class="o">=</span> <span class="n">FormattedExcinfo</span><span class="p">(</span>
+            <span class="n">showlocals</span><span class="o">=</span><span class="n">showlocals</span><span class="p">,</span>
+            <span class="n">style</span><span class="o">=</span><span class="n">style</span><span class="p">,</span>
+            <span class="n">abspath</span><span class="o">=</span><span class="n">abspath</span><span class="p">,</span>
+            <span class="n">tbfilter</span><span class="o">=</span><span class="n">tbfilter</span><span class="p">,</span>
+            <span class="n">funcargs</span><span class="o">=</span><span class="n">funcargs</span><span class="p">,</span>
+            <span class="n">truncate_locals</span><span class="o">=</span><span class="n">truncate_locals</span><span class="p">,</span>
+            <span class="n">chain</span><span class="o">=</span><span class="n">chain</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">fmt</span><span class="o">.</span><span class="n">repr_excinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traceback</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">ReprFileLocation</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exconly</span><span class="p">())</span>
+        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">traceback</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">loc</span> <span class="o">=</span> <span class="n">ReprFileLocation</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">exconly</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">text_type</span><span class="p">(</span><span class="n">loc</span><span class="p">)</span>
+
+<div class="viewcode-block" id="ExceptionInfo.match"><a class="viewcode-back" href="../../../reference.html#_pytest._code.ExceptionInfo.match">[docs]</a>    <span class="k">def</span> <span class="nf">match</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">regexp</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Match the regular expression &#39;regexp&#39; on the string representation of</span>
+<span class="sd">        the exception. If it matches then True is returned (so that it is</span>
+<span class="sd">        possible to write &#39;assert excinfo.match()&#39;). If it doesn&#39;t match an</span>
+<span class="sd">        AssertionError is raised.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">__tracebackhide__</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">regexp</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)):</span>
+            <span class="k">assert</span> <span class="mi">0</span><span class="p">,</span> <span class="s2">&quot;Pattern &#39;</span><span class="si">{!s}</span><span class="s2">&#39; not found in &#39;</span><span class="si">{!s}</span><span class="s2">&#39;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">regexp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span></div></div>
+
+
+<span class="nd">@attr</span><span class="o">.</span><span class="n">s</span>
+<span class="k">class</span> <span class="nc">FormattedExcinfo</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; presenting information about failing Functions and Generators. &quot;&quot;&quot;</span>
+
+    <span class="c1"># for traceback entries</span>
+    <span class="n">flow_marker</span> <span class="o">=</span> <span class="s2">&quot;&gt;&quot;</span>
+    <span class="n">fail_marker</span> <span class="o">=</span> <span class="s2">&quot;E&quot;</span>
+
+    <span class="n">showlocals</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="s2">&quot;long&quot;</span><span class="p">)</span>
+    <span class="n">abspath</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">tbfilter</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">funcargs</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">truncate_locals</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">chain</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">astcache</span> <span class="o">=</span> <span class="n">attr</span><span class="o">.</span><span class="n">ib</span><span class="p">(</span><span class="n">default</span><span class="o">=</span><span class="n">attr</span><span class="o">.</span><span class="n">Factory</span><span class="p">(</span><span class="nb">dict</span><span class="p">),</span> <span class="n">init</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="nb">repr</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_getindent</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">):</span>
+        <span class="c1"># figure out indent for given source</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">getstatement</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+            <span class="k">raise</span>
+        <span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">s</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">source</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+            <span class="k">except</span> <span class="ne">KeyboardInterrupt</span><span class="p">:</span>
+                <span class="k">raise</span>
+            <span class="k">except</span><span class="p">:</span>  <span class="c1"># noqa</span>
+                <span class="k">return</span> <span class="mi">0</span>
+        <span class="k">return</span> <span class="mi">4</span> <span class="o">+</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">s</span><span class="o">.</span><span class="n">lstrip</span><span class="p">()))</span>
+
+    <span class="k">def</span> <span class="nf">_getentrysource</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="n">source</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">getsource</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">astcache</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">source</span><span class="o">.</span><span class="n">deindent</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">source</span>
+
+    <span class="k">def</span> <span class="nf">_saferepr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">obj</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">py</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">saferepr</span><span class="p">(</span><span class="n">obj</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">repr_args</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">funcargs</span><span class="p">:</span>
+            <span class="n">args</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">argname</span><span class="p">,</span> <span class="n">argvalue</span> <span class="ow">in</span> <span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">getargs</span><span class="p">(</span><span class="n">var</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+                <span class="n">args</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">argname</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saferepr</span><span class="p">(</span><span class="n">argvalue</span><span class="p">)))</span>
+            <span class="k">return</span> <span class="n">ReprFuncArgs</span><span class="p">(</span><span class="n">args</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_source</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">line_index</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">short</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot; return formatted and marked up source lines. &quot;&quot;&quot;</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">line_index</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="o">.</span><span class="n">lines</span><span class="p">):</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="s2">&quot;???&quot;</span><span class="p">)</span>
+            <span class="n">line_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">if</span> <span class="n">line_index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">line_index</span> <span class="o">+=</span> <span class="nb">len</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+        <span class="n">space_prefix</span> <span class="o">=</span> <span class="s2">&quot;    &quot;</span>
+        <span class="k">if</span> <span class="n">short</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">space_prefix</span> <span class="o">+</span> <span class="n">source</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line_index</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">lines</span><span class="p">[:</span><span class="n">line_index</span><span class="p">]:</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">space_prefix</span> <span class="o">+</span> <span class="n">line</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flow_marker</span> <span class="o">+</span> <span class="s2">&quot;   &quot;</span> <span class="o">+</span> <span class="n">source</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line_index</span><span class="p">])</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">source</span><span class="o">.</span><span class="n">lines</span><span class="p">[</span><span class="n">line_index</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]:</span>
+                <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">space_prefix</span> <span class="o">+</span> <span class="n">line</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">excinfo</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">indent</span> <span class="o">=</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">short</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getindent</span><span class="p">(</span><span class="n">source</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_exconly</span><span class="p">(</span><span class="n">excinfo</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="n">indent</span><span class="p">,</span> <span class="n">markall</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">lines</span>
+
+    <span class="k">def</span> <span class="nf">get_exconly</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">markall</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">indent</span> <span class="o">=</span> <span class="s2">&quot; &quot;</span> <span class="o">*</span> <span class="n">indent</span>
+        <span class="c1"># get the real exception information out</span>
+        <span class="n">exlines</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">exconly</span><span class="p">(</span><span class="n">tryshort</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">failindent</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">fail_marker</span> <span class="o">+</span> <span class="n">indent</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">exlines</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">failindent</span> <span class="o">+</span> <span class="n">line</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">markall</span><span class="p">:</span>
+                <span class="n">failindent</span> <span class="o">=</span> <span class="n">indent</span>
+        <span class="k">return</span> <span class="n">lines</span>
+
+    <span class="k">def</span> <span class="nf">repr_locals</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">locals</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">showlocals</span><span class="p">:</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="n">loc</span> <span class="k">for</span> <span class="n">loc</span> <span class="ow">in</span> <span class="nb">locals</span> <span class="k">if</span> <span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="s2">&quot;@&quot;</span><span class="p">]</span>
+            <span class="n">keys</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="n">value</span> <span class="o">=</span> <span class="nb">locals</span><span class="p">[</span><span class="n">name</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">name</span> <span class="o">==</span> <span class="s2">&quot;__builtins__&quot;</span><span class="p">:</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;__builtins__ = &lt;builtins&gt;&quot;</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># This formatting could all be handled by the</span>
+                    <span class="c1"># _repr() function, which is only reprlib.Repr in</span>
+                    <span class="c1"># disguise, so is very configurable.</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">truncate_locals</span><span class="p">:</span>
+                        <span class="n">str_repr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_saferepr</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">str_repr</span> <span class="o">=</span> <span class="n">pprint</span><span class="o">.</span><span class="n">pformat</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+                    <span class="c1"># if len(str_repr) &lt; 70 or not isinstance(value,</span>
+                    <span class="c1">#                            (list, tuple, dict)):</span>
+                    <span class="n">lines</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s2">&quot;</span><span class="si">%-10s</span><span class="s2"> = </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">name</span><span class="p">,</span> <span class="n">str_repr</span><span class="p">))</span>
+                    <span class="c1"># else:</span>
+                    <span class="c1">#    self._line(&quot;%-10s =\\&quot; % (name,))</span>
+                    <span class="c1">#    # XXX</span>
+                    <span class="c1">#    pprint.pprint(value, stream=self.excinfowriter)</span>
+            <span class="k">return</span> <span class="n">ReprLocals</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">repr_traceback_entry</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">entry</span><span class="p">,</span> <span class="n">excinfo</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">_pytest._code</span>
+
+        <span class="n">source</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_getentrysource</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">source</span> <span class="o">=</span> <span class="n">_pytest</span><span class="o">.</span><span class="n">_code</span><span class="o">.</span><span class="n">Source</span><span class="p">(</span><span class="s2">&quot;???&quot;</span><span class="p">)</span>
+            <span class="n">line_index</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># entry.getfirstlinesource() can be -1, should be 0 on jython</span>
+            <span class="n">line_index</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">getfirstlinesource</span><span class="p">(),</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">lines</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">style</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">_repr_style</span>
+        <span class="k">if</span> <span class="n">style</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">style</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">style</span>
+        <span class="k">if</span> <span class="n">style</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;short&quot;</span><span class="p">,</span> <span class="s2">&quot;long&quot;</span><span class="p">):</span>
+            <span class="n">short</span> <span class="o">=</span> <span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span>
+            <span class="n">reprargs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repr_args</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">short</span> <span class="k">else</span> <span class="kc">None</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_source</span><span class="p">(</span><span class="n">source</span><span class="p">,</span> <span class="n">line_index</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">,</span> <span class="n">short</span><span class="o">=</span><span class="n">short</span><span class="p">)</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">s</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">short</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;in </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">excinfo</span> <span class="ow">and</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">typename</span> <span class="ow">or</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_makepath</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">filelocrepr</span> <span class="o">=</span> <span class="n">ReprFileLocation</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">entry</span><span class="o">.</span><span class="n">lineno</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">message</span><span class="p">)</span>
+            <span class="n">localsrepr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">short</span><span class="p">:</span>
+                <span class="n">localsrepr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repr_locals</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">locals</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">ReprEntry</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="n">reprargs</span><span class="p">,</span> <span class="n">localsrepr</span><span class="p">,</span> <span class="n">filelocrepr</span><span class="p">,</span> <span class="n">style</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">excinfo</span><span class="p">:</span>
+            <span class="n">lines</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_exconly</span><span class="p">(</span><span class="n">excinfo</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ReprEntry</span><span class="p">(</span><span class="n">lines</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">style</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_makepath</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">abspath</span><span class="p">:</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">np</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">()</span><span class="o">.</span><span class="n">bestrelpath</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">OSError</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">path</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">np</span><span class="p">)</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)):</span>
+                <span class="n">path</span> <span class="o">=</span> <span class="n">np</span>
+        <span class="k">return</span> <span class="n">path</span>
+
+    <span class="k">def</span> <span class="nf">repr_traceback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="n">traceback</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">traceback</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">tbfilter</span><span class="p">:</span>
+            <span class="n">traceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">filter</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">is_recursion_error</span><span class="p">(</span><span class="n">excinfo</span><span class="p">):</span>
+            <span class="n">traceback</span><span class="p">,</span> <span class="n">extraline</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_truncate_recursive_traceback</span><span class="p">(</span><span class="n">traceback</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">extraline</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="n">last</span> <span class="o">=</span> <span class="n">traceback</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">entries</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">traceback</span><span class="p">):</span>
+            <span class="n">einfo</span> <span class="o">=</span> <span class="p">(</span><span class="n">last</span> <span class="o">==</span> <span class="n">entry</span><span class="p">)</span> <span class="ow">and</span> <span class="n">excinfo</span> <span class="ow">or</span> <span class="kc">None</span>
+            <span class="n">reprentry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repr_traceback_entry</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="n">einfo</span><span class="p">)</span>
+            <span class="n">entries</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">reprentry</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ReprTraceback</span><span class="p">(</span><span class="n">entries</span><span class="p">,</span> <span class="n">extraline</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">style</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_truncate_recursive_traceback</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Truncate the given recursive traceback trying to find the starting point</span>
+<span class="sd">        of the recursion.</span>
+
+<span class="sd">        The detection is done by going through each traceback entry and finding the</span>
+<span class="sd">        point in which the locals of the frame are equal to the locals of a previous frame (see ``recursionindex()``.</span>
+
+<span class="sd">        Handle the situation where the recursion process might raise an exception (for example</span>
+<span class="sd">        comparing numpy arrays using equality raises a TypeError), in which case we do our best to</span>
+<span class="sd">        warn the user of the error and show a limited traceback.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">recursionindex</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">recursionindex</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">max_frames</span> <span class="o">=</span> <span class="mi">10</span>
+            <span class="n">extraline</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s2">&quot;!!! Recursion error detected, but an error occurred locating the origin of recursion.</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;  The following exception happened when comparing locals in the stack frame:</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;    </span><span class="si">{exc_type}</span><span class="s2">: </span><span class="si">{exc_msg}</span><span class="se">\n</span><span class="s2">&quot;</span>
+                <span class="s2">&quot;  Displaying first and last </span><span class="si">{max_frames}</span><span class="s2"> stack frames out of </span><span class="si">{total}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span>
+                <span class="n">exc_type</span><span class="o">=</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+                <span class="n">exc_msg</span><span class="o">=</span><span class="n">safe_str</span><span class="p">(</span><span class="n">e</span><span class="p">),</span>
+                <span class="n">max_frames</span><span class="o">=</span><span class="n">max_frames</span><span class="p">,</span>
+                <span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">traceback</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="n">traceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="p">[:</span><span class="n">max_frames</span><span class="p">]</span> <span class="o">+</span> <span class="n">traceback</span><span class="p">[</span><span class="o">-</span><span class="n">max_frames</span><span class="p">:]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">recursionindex</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">extraline</span> <span class="o">=</span> <span class="s2">&quot;!!! Recursion detected (same locals &amp; position)&quot;</span>
+                <span class="n">traceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="p">[:</span> <span class="n">recursionindex</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">extraline</span> <span class="o">=</span> <span class="kc">None</span>
+
+        <span class="k">return</span> <span class="n">traceback</span><span class="p">,</span> <span class="n">extraline</span>
+
+    <span class="k">def</span> <span class="nf">repr_excinfo</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">excinfo</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">_PY2</span><span class="p">:</span>
+            <span class="n">reprtraceback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repr_traceback</span><span class="p">(</span><span class="n">excinfo</span><span class="p">)</span>
+            <span class="n">reprcrash</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">_getreprcrash</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">ReprExceptionInfo</span><span class="p">(</span><span class="n">reprtraceback</span><span class="p">,</span> <span class="n">reprcrash</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">repr_chain</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">value</span>
+            <span class="n">descr</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+            <span class="k">while</span> <span class="n">e</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">)</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">id</span><span class="p">(</span><span class="n">e</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">excinfo</span><span class="p">:</span>
+                    <span class="n">reprtraceback</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">repr_traceback</span><span class="p">(</span><span class="n">excinfo</span><span class="p">)</span>
+                    <span class="n">reprcrash</span> <span class="o">=</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">_getreprcrash</span><span class="p">()</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># fallback to native repr if the exception doesn&#39;t have a traceback:</span>
+                    <span class="c1"># ExceptionInfo objects require a full traceback to work</span>
+                    <span class="n">reprtraceback</span> <span class="o">=</span> <span class="n">ReprTracebackNative</span><span class="p">(</span>
+                        <span class="n">traceback</span><span class="o">.</span><span class="n">format_exception</span><span class="p">(</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+                    <span class="p">)</span>
+                    <span class="n">reprcrash</span> <span class="o">=</span> <span class="kc">None</span>
+
+                <span class="n">repr_chain</span> <span class="o">+=</span> <span class="p">[(</span><span class="n">reprtraceback</span><span class="p">,</span> <span class="n">reprcrash</span><span class="p">,</span> <span class="n">descr</span><span class="p">)]</span>
+                <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">__cause__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain</span><span class="p">:</span>
+                    <span class="n">e</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">__cause__</span>
+                    <span class="n">excinfo</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">ExceptionInfo</span><span class="p">((</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span>
+                        <span class="k">else</span> <span class="kc">None</span>
+                    <span class="p">)</span>
+                    <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;The above exception was the direct cause of the following exception:&quot;</span>
+                <span class="k">elif</span> <span class="p">(</span>
+                    <span class="n">e</span><span class="o">.</span><span class="n">__context__</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                    <span class="ow">and</span> <span class="ow">not</span> <span class="n">e</span><span class="o">.</span><span class="n">__suppress_context__</span>
+                    <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain</span>
+                <span class="p">):</span>
+                    <span class="n">e</span> <span class="o">=</span> <span class="n">e</span><span class="o">.</span><span class="n">__context__</span>
+                    <span class="n">excinfo</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">ExceptionInfo</span><span class="p">((</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">),</span> <span class="n">e</span><span class="p">,</span> <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span><span class="p">))</span>
+                        <span class="k">if</span> <span class="n">e</span><span class="o">.</span><span class="n">__traceback__</span>
+                        <span class="k">else</span> <span class="kc">None</span>
+                    <span class="p">)</span>
+                    <span class="n">descr</span> <span class="o">=</span> <span class="s2">&quot;During handling of the above exception, another exception occurred:&quot;</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">e</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="n">repr_chain</span><span class="o">.</span><span class="n">reverse</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">ExceptionChainRepr</span><span class="p">(</span><span class="n">repr_chain</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">TerminalRepr</span><span class="p">(</span><span class="nb">object</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">s</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__unicode__</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">_PY2</span><span class="p">:</span>
+            <span class="n">s</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">s</span>
+
+    <span class="k">def</span> <span class="nf">__unicode__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="c1"># FYI this is called from pytest-xdist&#39;s serialization of exception</span>
+        <span class="c1"># information.</span>
+        <span class="n">io</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">TextIO</span><span class="p">()</span>
+        <span class="n">tw</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">TerminalWriter</span><span class="p">(</span><span class="n">file</span><span class="o">=</span><span class="n">io</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">io</span><span class="o">.</span><span class="n">getvalue</span><span class="p">()</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;&lt;</span><span class="si">%s</span><span class="s2"> instance at </span><span class="si">%0x</span><span class="s2">&gt;&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="vm">__class__</span><span class="p">,</span> <span class="nb">id</span><span class="p">(</span><span class="bp">self</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">ExceptionRepr</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sections</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">def</span> <span class="nf">addsection</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">sep</span><span class="o">=</span><span class="s2">&quot;-&quot;</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">name</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">sep</span><span class="p">))</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">content</span><span class="p">,</span> <span class="n">sep</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sections</span><span class="p">:</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">sep</span><span class="p">(</span><span class="n">sep</span><span class="p">,</span> <span class="n">name</span><span class="p">)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">content</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ExceptionChainRepr</span><span class="p">(</span><span class="n">ExceptionRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">chain</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ExceptionChainRepr</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">chain</span> <span class="o">=</span> <span class="n">chain</span>
+        <span class="c1"># reprcrash and reprtraceback of the outermost (the newest) exception</span>
+        <span class="c1"># in the chain</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprtraceback</span> <span class="o">=</span> <span class="n">chain</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprcrash</span> <span class="o">=</span> <span class="n">chain</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">chain</span><span class="p">:</span>
+            <span class="n">element</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">element</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">element</span><span class="p">[</span><span class="mi">2</span><span class="p">],</span> <span class="n">yellow</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ExceptionChainRepr</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ReprExceptionInfo</span><span class="p">(</span><span class="n">ExceptionRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reprtraceback</span><span class="p">,</span> <span class="n">reprcrash</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ReprExceptionInfo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprtraceback</span> <span class="o">=</span> <span class="n">reprtraceback</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprcrash</span> <span class="o">=</span> <span class="n">reprcrash</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprtraceback</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">ReprExceptionInfo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ReprTraceback</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="n">entrysep</span> <span class="o">=</span> <span class="s2">&quot;_ &quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reprentries</span><span class="p">,</span> <span class="n">extraline</span><span class="p">,</span> <span class="n">style</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprentries</span> <span class="o">=</span> <span class="n">reprentries</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extraline</span> <span class="o">=</span> <span class="n">extraline</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">style</span> <span class="o">=</span> <span class="n">style</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="c1"># the entries might have different styles</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">entry</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reprentries</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">entry</span><span class="o">.</span><span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span><span class="p">:</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="n">entry</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reprentries</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">next_entry</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprentries</span><span class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="k">if</span> <span class="p">(</span>
+                    <span class="n">entry</span><span class="o">.</span><span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span>
+                    <span class="ow">or</span> <span class="n">entry</span><span class="o">.</span><span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span>
+                    <span class="ow">and</span> <span class="n">next_entry</span><span class="o">.</span><span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;long&quot;</span>
+                <span class="p">):</span>
+                    <span class="n">tw</span><span class="o">.</span><span class="n">sep</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">entrysep</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">extraline</span><span class="p">:</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">extraline</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ReprTracebackNative</span><span class="p">(</span><span class="n">ReprTraceback</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tblines</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;native&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprentries</span> <span class="o">=</span> <span class="p">[</span><span class="n">ReprEntryNative</span><span class="p">(</span><span class="n">tblines</span><span class="p">)]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extraline</span> <span class="o">=</span> <span class="kc">None</span>
+
+
+<span class="k">class</span> <span class="nc">ReprEntryNative</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="n">style</span> <span class="o">=</span> <span class="s2">&quot;native&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tblines</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">tblines</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="n">tw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">ReprEntry</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="n">localssep</span> <span class="o">=</span> <span class="s2">&quot;_ &quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">,</span> <span class="n">reprfuncargs</span><span class="p">,</span> <span class="n">reprlocals</span><span class="p">,</span> <span class="n">filelocrepr</span><span class="p">,</span> <span class="n">style</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprfuncargs</span> <span class="o">=</span> <span class="n">reprfuncargs</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprlocals</span> <span class="o">=</span> <span class="n">reprlocals</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">reprfileloc</span> <span class="o">=</span> <span class="n">filelocrepr</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">style</span> <span class="o">=</span> <span class="n">style</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">style</span> <span class="o">==</span> <span class="s2">&quot;short&quot;</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reprfileloc</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+                <span class="n">red</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;E   &quot;</span><span class="p">)</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">red</span><span class="o">=</span><span class="n">red</span><span class="p">)</span>
+            <span class="c1"># tw.line(&quot;&quot;)</span>
+            <span class="k">return</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprfuncargs</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reprfuncargs</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">red</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s2">&quot;E   &quot;</span><span class="p">)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">line</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">red</span><span class="o">=</span><span class="n">red</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprlocals</span><span class="p">:</span>
+            <span class="c1"># tw.sep(self.localssep, &quot;Locals&quot;)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reprlocals</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprfileloc</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">reprfileloc</span><span class="o">.</span><span class="n">toterminal</span><span class="p">(</span><span class="n">tw</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__str__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="se">\n</span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprlocals</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">reprfileloc</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ReprFileLocation</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">lineno</span><span class="p">,</span> <span class="n">message</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lineno</span> <span class="o">=</span> <span class="n">lineno</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">message</span> <span class="o">=</span> <span class="n">message</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="c1"># filename and lineno output for each entry,</span>
+        <span class="c1"># using an output format that most editors unterstand</span>
+        <span class="n">msg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">message</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">msg</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="n">msg</span><span class="p">[:</span><span class="n">i</span><span class="p">]</span>
+        <span class="n">tw</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">red</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;:</span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">lineno</span><span class="p">,</span> <span class="n">msg</span><span class="p">))</span>
+
+
+<span class="k">class</span> <span class="nc">ReprLocals</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lines</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">lines</span> <span class="o">=</span> <span class="n">lines</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">lines</span><span class="p">:</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">line</span><span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">ReprFuncArgs</span><span class="p">(</span><span class="n">TerminalRepr</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">args</span> <span class="o">=</span> <span class="n">args</span>
+
+    <span class="k">def</span> <span class="nf">toterminal</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tw</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+            <span class="n">linesofar</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">args</span><span class="p">:</span>
+                <span class="n">ns</span> <span class="o">=</span> <span class="s2">&quot;</span><span class="si">%s</span><span class="s2"> = </span><span class="si">%s</span><span class="s2">&quot;</span> <span class="o">%</span> <span class="p">(</span><span class="n">safe_str</span><span class="p">(</span><span class="n">name</span><span class="p">),</span> <span class="n">safe_str</span><span class="p">(</span><span class="n">value</span><span class="p">))</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ns</span><span class="p">)</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">linesofar</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">&gt;</span> <span class="n">tw</span><span class="o">.</span><span class="n">fullwidth</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">linesofar</span><span class="p">:</span>
+                        <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">linesofar</span><span class="p">)</span>
+                    <span class="n">linesofar</span> <span class="o">=</span> <span class="n">ns</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">linesofar</span><span class="p">:</span>
+                        <span class="n">linesofar</span> <span class="o">+=</span> <span class="s2">&quot;, &quot;</span> <span class="o">+</span> <span class="n">ns</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">linesofar</span> <span class="o">=</span> <span class="n">ns</span>
+            <span class="k">if</span> <span class="n">linesofar</span><span class="p">:</span>
+                <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">linesofar</span><span class="p">)</span>
+            <span class="n">tw</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+
+<span class="k">def</span> <span class="nf">getrawcode</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">trycall</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; return code object for given function. &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">obj</span><span class="o">.</span><span class="vm">__code__</span>
+    <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;im_func&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;func_code&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;f_code&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="n">obj</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;__code__&quot;</span><span class="p">,</span> <span class="n">obj</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">trycall</span> <span class="ow">and</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;co_firstlineno&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="s2">&quot;__call__&quot;</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">inspect</span><span class="o">.</span><span class="n">isclass</span><span class="p">(</span><span class="n">obj</span><span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">getrawcode</span><span class="p">(</span><span class="n">obj</span><span class="o">.</span><span class="fm">__call__</span><span class="p">,</span> <span class="n">trycall</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="s2">&quot;co_firstlineno&quot;</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">x</span>
+        <span class="k">return</span> <span class="n">obj</span>
+
+
+<span class="k">if</span> <span class="n">PY35</span><span class="p">:</span>  <span class="c1"># RecursionError introduced in 3.5</span>
+
+    <span class="k">def</span> <span class="nf">is_recursion_error</span><span class="p">(</span><span class="n">excinfo</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">errisinstance</span><span class="p">(</span><span class="n">RecursionError</span><span class="p">)</span>  <span class="c1"># noqa</span>
+
+
+<span class="k">else</span><span class="p">:</span>
+
+    <span class="k">def</span> <span class="nf">is_recursion_error</span><span class="p">(</span><span class="n">excinfo</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">excinfo</span><span class="o">.</span><span class="n">errisinstance</span><span class="p">(</span><span class="ne">RuntimeError</span><span class="p">):</span>
+            <span class="k">return</span> <span class="kc">False</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">return</span> <span class="s2">&quot;maximum recursion depth exceeded&quot;</span> <span class="ow">in</span> <span class="nb">str</span><span class="p">(</span><span class="n">excinfo</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">UnicodeError</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+
+<span class="c1"># relative paths that we use to filter traceback entries from appearing to the user;</span>
+<span class="c1"># see filter_traceback</span>
+<span class="c1"># note: if we need to add more paths than what we have now we should probably use a list</span>
+<span class="c1"># for better maintenance</span>
+
+<span class="n">_PLUGGY_DIR</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">pluggy</span><span class="o">.</span><span class="vm">__file__</span><span class="o">.</span><span class="n">rstrip</span><span class="p">(</span><span class="s2">&quot;oc&quot;</span><span class="p">))</span>
+<span class="c1"># pluggy is either a package or a single module depending on the version</span>
+<span class="k">if</span> <span class="n">_PLUGGY_DIR</span><span class="o">.</span><span class="n">basename</span> <span class="o">==</span> <span class="s2">&quot;__init__.py&quot;</span><span class="p">:</span>
+    <span class="n">_PLUGGY_DIR</span> <span class="o">=</span> <span class="n">_PLUGGY_DIR</span><span class="o">.</span><span class="n">dirpath</span><span class="p">()</span>
+<span class="n">_PYTEST_DIR</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">_pytest</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">dirpath</span><span class="p">()</span>
+<span class="n">_PY_DIR</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">py</span><span class="o">.</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">dirpath</span><span class="p">()</span>
+
+
+<span class="k">def</span> <span class="nf">filter_traceback</span><span class="p">(</span><span class="n">entry</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Return True if a TracebackEntry instance should be removed from tracebacks:</span>
+<span class="sd">    * dynamically generated code (no code to show up for it);</span>
+<span class="sd">    * internal traceback from pytest or its internal libraries, py and pluggy.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># entry.path might sometimes return a str object when the entry</span>
+    <span class="c1"># points to dynamically generated code</span>
+    <span class="c1"># see https://bitbucket.org/pytest-dev/py/issues/71</span>
+    <span class="n">raw_filename</span> <span class="o">=</span> <span class="n">entry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">code</span><span class="o">.</span><span class="n">raw</span><span class="o">.</span><span class="n">co_filename</span>
+    <span class="n">is_generated</span> <span class="o">=</span> <span class="s2">&quot;&lt;&quot;</span> <span class="ow">in</span> <span class="n">raw_filename</span> <span class="ow">and</span> <span class="s2">&quot;&gt;&quot;</span> <span class="ow">in</span> <span class="n">raw_filename</span>
+    <span class="k">if</span> <span class="n">is_generated</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+    <span class="c1"># entry.path might point to a non-existing file, in which case it will</span>
+    <span class="c1"># also return a str object. see #1133</span>
+    <span class="n">p</span> <span class="o">=</span> <span class="n">py</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">local</span><span class="p">(</span><span class="n">entry</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span>
+        <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">_PLUGGY_DIR</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">_PYTEST_DIR</span><span class="p">)</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">p</span><span class="o">.</span><span class="n">relto</span><span class="p">(</span><span class="n">_PY_DIR</span><span class="p">)</span>
+    <span class="p">)</span>
+</pre></div>
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="nav-item nav-item-0"><a href="../../../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../../index.html" >Module code</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

@@ -1,0 +1,247 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Historical Notes &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="shortcut icon" href="_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="License" href="license.html" />
+    <link rel="prev" title="Deprecations and Removals" href="deprecations.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="license.html" title="License"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="deprecations.html" title="Deprecations and Removals"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="historical-notes">
+<h1>Historical Notes<a class="headerlink" href="#historical-notes" title="Permalink to this headline">¶</a></h1>
+<p>This page lists features or behavior from previous versions of pytest which have changed over the years. They are
+kept here as a historical note so users looking at old code can find documentation related to them.</p>
+<div class="section" id="cache-plugin-integrated-into-the-core">
+<h2>cache plugin integrated into the core<a class="headerlink" href="#cache-plugin-integrated-into-the-core" title="Permalink to this headline">¶</a></h2>
+<div class="versionadded">
+<p><span class="versionmodified">New in version 2.8.</span></p>
+</div>
+<p>The functionality of the <a class="reference internal" href="cache.html#cache"><span class="std std-ref">core cache</span></a> plugin was previously distributed
+as a third party plugin named <code class="docutils literal notranslate"><span class="pre">pytest-cache</span></code>.  The core plugin
+is compatible regarding command line options and API usage except that you
+can only store/receive data between test runs that is json-serializable.</p>
+</div>
+<div class="section" id="funcargs-and-pytest-funcarg">
+<h2>funcargs and <code class="docutils literal notranslate"><span class="pre">pytest_funcarg__</span></code><a class="headerlink" href="#funcargs-and-pytest-funcarg" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.3.</span></p>
+</div>
+<p>In versions prior to 2.3 there was no <code class="docutils literal notranslate"><span class="pre">&#64;pytest.fixture</span></code> marker
+and you had to use a magic <code class="docutils literal notranslate"><span class="pre">pytest_funcarg__NAME</span></code> prefix
+for the fixture factory.  This remains and will remain supported
+but is not anymore advertised as the primary means of declaring fixture
+functions.</p>
+</div>
+<div class="section" id="pytest-yield-fixture-decorator">
+<h2><code class="docutils literal notranslate"><span class="pre">&#64;pytest.yield_fixture</span></code> decorator<a class="headerlink" href="#pytest-yield-fixture-decorator" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.10.</span></p>
+</div>
+<p>Prior to version 2.10, in order to use a <code class="docutils literal notranslate"><span class="pre">yield</span></code> statement to execute teardown code one
+had to mark a fixture using the <code class="docutils literal notranslate"><span class="pre">yield_fixture</span></code> marker. From 2.10 onward, normal
+fixtures can use <code class="docutils literal notranslate"><span class="pre">yield</span></code> directly so the <code class="docutils literal notranslate"><span class="pre">yield_fixture</span></code> decorator is no longer needed
+and considered deprecated.</p>
+</div>
+<div class="section" id="pytest-header-in-setup-cfg">
+<h2><code class="docutils literal notranslate"><span class="pre">[pytest]</span></code> header in <code class="docutils literal notranslate"><span class="pre">setup.cfg</span></code><a class="headerlink" href="#pytest-header-in-setup-cfg" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 3.0.</span></p>
+</div>
+<p>Prior to 3.0, the supported section name was <code class="docutils literal notranslate"><span class="pre">[pytest]</span></code>. Due to how
+this may collide with some distutils commands, the recommended
+section name for <code class="docutils literal notranslate"><span class="pre">setup.cfg</span></code> files is now <code class="docutils literal notranslate"><span class="pre">[tool:pytest]</span></code>.</p>
+<p>Note that for <code class="docutils literal notranslate"><span class="pre">pytest.ini</span></code> and <code class="docutils literal notranslate"><span class="pre">tox.ini</span></code> files the section
+name is <code class="docutils literal notranslate"><span class="pre">[pytest]</span></code>.</p>
+</div>
+<div class="section" id="applying-marks-to-pytest-mark-parametrize-parameters">
+<h2>Applying marks to <code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.parametrize</span></code> parameters<a class="headerlink" href="#applying-marks-to-pytest-mark-parametrize-parameters" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 3.1.</span></p>
+</div>
+<p>Prior to version 3.1 the supported mechanism for marking values
+used the syntax:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">parametrize</span><span class="p">(</span><span class="s2">&quot;test_input,expected&quot;</span><span class="p">,</span> <span class="p">[</span>
+    <span class="p">(</span><span class="s2">&quot;3+5&quot;</span><span class="p">,</span> <span class="mi">8</span><span class="p">),</span>
+    <span class="p">(</span><span class="s2">&quot;2+4&quot;</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">xfail</span><span class="p">((</span><span class="s2">&quot;6*9&quot;</span><span class="p">,</span> <span class="mi">42</span><span class="p">),),</span>
+<span class="p">])</span>
+<span class="k">def</span> <span class="nf">test_eval</span><span class="p">(</span><span class="n">test_input</span><span class="p">,</span> <span class="n">expected</span><span class="p">):</span>
+    <span class="k">assert</span> <span class="nb">eval</span><span class="p">(</span><span class="n">test_input</span><span class="p">)</span> <span class="o">==</span> <span class="n">expected</span>
+</pre></div>
+</div>
+<p>This was an initial hack to support the feature but soon was demonstrated to be incomplete,
+broken for passing functions or applying multiple marks with the same name but different parameters.</p>
+<p>The old syntax is planned to be removed in pytest-4.0.</p>
+</div>
+<div class="section" id="pytest-mark-parametrize-argument-names-as-a-tuple">
+<h2><code class="docutils literal notranslate"><span class="pre">&#64;pytest.mark.parametrize</span></code> argument names as a tuple<a class="headerlink" href="#pytest-mark-parametrize-argument-names-as-a-tuple" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.4.</span></p>
+</div>
+<p>In versions prior to 2.4 one needed to specify the argument
+names as a tuple.  This remains valid but the simpler <code class="docutils literal notranslate"><span class="pre">&quot;name1,name2,...&quot;</span></code>
+comma-separated-string syntax is now advertised first because
+it’s easier to write and produces less line noise.</p>
+</div>
+<div class="section" id="setup-is-now-an-autouse-fixture">
+<h2>setup: is now an “autouse fixture”<a class="headerlink" href="#setup-is-now-an-autouse-fixture" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.3.</span></p>
+</div>
+<p>During development prior to the pytest-2.3 release the name
+<code class="docutils literal notranslate"><span class="pre">pytest.setup</span></code> was used but before the release it was renamed
+and moved to become part of the general fixture mechanism,
+namely <a class="reference internal" href="fixture.html#autouse-fixtures"><span class="std std-ref">Autouse fixtures (xUnit setup on steroids)</span></a></p>
+</div>
+<div class="section" id="conditions-as-strings-instead-of-booleans">
+<span id="string-conditions"></span><h2>Conditions as strings instead of booleans<a class="headerlink" href="#conditions-as-strings-instead-of-booleans" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.4.</span></p>
+</div>
+<p>Prior to pytest-2.4 the only way to specify skipif/xfail conditions was
+to use strings:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">sys</span>
+<span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skipif</span><span class="p">(</span><span class="s2">&quot;sys.version_info &gt;= (3,3)&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">():</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>During test function setup the skipif condition is evaluated by calling
+<code class="docutils literal notranslate"><span class="pre">eval('sys.version_info</span> <span class="pre">&gt;=</span> <span class="pre">(3,0)',</span> <span class="pre">namespace)</span></code>.  The namespace contains
+all the module globals, and <code class="docutils literal notranslate"><span class="pre">os</span></code> and <code class="docutils literal notranslate"><span class="pre">sys</span></code> as a minimum.</p>
+<p>Since pytest-2.4 <a class="reference internal" href="skipping.html#condition-booleans"><span class="std std-ref">boolean conditions</span></a> are considered preferable
+because markers can then be freely imported between test modules.
+With strings you need to import not only the marker but all variables
+used by the marker, which violates encapsulation.</p>
+<p>The reason for specifying the condition as a string was that <code class="docutils literal notranslate"><span class="pre">pytest</span></code> can
+report a summary of skip conditions based purely on the condition string.
+With conditions as booleans you are required to specify a <code class="docutils literal notranslate"><span class="pre">reason</span></code> string.</p>
+<p>Note that string conditions will remain fully supported and you are free
+to use them if you have no need for cross-importing markers.</p>
+<p>The evaluation of a condition string in <code class="docutils literal notranslate"><span class="pre">pytest.mark.skipif(conditionstring)</span></code>
+or <code class="docutils literal notranslate"><span class="pre">pytest.mark.xfail(conditionstring)</span></code> takes place in a namespace
+dictionary which is constructed as follows:</p>
+<ul class="simple">
+<li>the namespace is initialized by putting the <code class="docutils literal notranslate"><span class="pre">sys</span></code> and <code class="docutils literal notranslate"><span class="pre">os</span></code> modules
+and the pytest <code class="docutils literal notranslate"><span class="pre">config</span></code> object into it.</li>
+<li>updated with the module globals of the test function for which the
+expression is applied.</li>
+</ul>
+<p>The pytest <code class="docutils literal notranslate"><span class="pre">config</span></code> object allows you to skip based on a test
+configuration value which you might have added:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skipif</span><span class="p">(</span><span class="s2">&quot;not config.getvalue(&#39;db&#39;)&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+    <span class="o">...</span>
+</pre></div>
+</div>
+<p>The equivalent with “boolean conditions” is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="nd">@pytest</span><span class="o">.</span><span class="n">mark</span><span class="o">.</span><span class="n">skipif</span><span class="p">(</span><span class="ow">not</span> <span class="n">pytest</span><span class="o">.</span><span class="n">config</span><span class="o">.</span><span class="n">getvalue</span><span class="p">(</span><span class="s2">&quot;db&quot;</span><span class="p">),</span>
+                    <span class="n">reason</span><span class="o">=</span><span class="s2">&quot;--db was not specified&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">(</span><span class="o">...</span><span class="p">):</span>
+    <span class="k">pass</span>
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">You cannot use <code class="docutils literal notranslate"><span class="pre">pytest.config.getvalue()</span></code> in code
+imported before pytest’s argument parsing takes place.  For example,
+<code class="docutils literal notranslate"><span class="pre">conftest.py</span></code> files are imported before command line parsing and thus
+<code class="docutils literal notranslate"><span class="pre">config.getvalue()</span></code> will not execute correctly.</p>
+</div>
+</div>
+<div class="section" id="pytest-set-trace">
+<h2><code class="docutils literal notranslate"><span class="pre">pytest.set_trace()</span></code><a class="headerlink" href="#pytest-set-trace" title="Permalink to this headline">¶</a></h2>
+<div class="versionchanged">
+<p><span class="versionmodified">Changed in version 2.4.</span></p>
+</div>
+<p>Previous to version 2.4 to set a break point in code one needed to use <code class="docutils literal notranslate"><span class="pre">pytest.set_trace()</span></code>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytest</span>
+<span class="k">def</span> <span class="nf">test_function</span><span class="p">():</span>
+    <span class="o">...</span>
+    <span class="n">pytest</span><span class="o">.</span><span class="n">set_trace</span><span class="p">()</span>    <span class="c1"># invoke PDB debugger and tracing</span>
+</pre></div>
+</div>
+<p>This is no longer needed and one can use the native <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">pdb;pdb.set_trace()</span></code> call directly.</p>
+<p>For more details see <a class="reference internal" href="usage.html#breakpoints"><span class="std std-ref">Setting breakpoints</span></a>.</p>
+</div>
+<div class="section" id="compat-properties">
+<h2>“compat” properties<a class="headerlink" href="#compat-properties" title="Permalink to this headline">¶</a></h2>
+<div class="deprecated">
+<p><span class="versionmodified">Deprecated since version 3.9.</span></p>
+</div>
+<p>Access of <code class="docutils literal notranslate"><span class="pre">Module</span></code>, <code class="docutils literal notranslate"><span class="pre">Function</span></code>, <code class="docutils literal notranslate"><span class="pre">Class</span></code>, <code class="docutils literal notranslate"><span class="pre">Instance</span></code>, <code class="docutils literal notranslate"><span class="pre">File</span></code> and <code class="docutils literal notranslate"><span class="pre">Item</span></code> through <code class="docutils literal notranslate"><span class="pre">Node</span></code> instances have long
+been documented as deprecated, but started to emit warnings from pytest <code class="docutils literal notranslate"><span class="pre">3.9</span></code> and onward.</p>
+<p>Users should just <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">pytest</span></code> and access those objects using the <code class="docutils literal notranslate"><span class="pre">pytest</span></code> module.</p>
+</div>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="license.html" title="License"
+             >next</a></li>
+        <li class="right" >
+          <a href="deprecations.html" title="Deprecations and Removals"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="contents.html">pytest-3.10</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>

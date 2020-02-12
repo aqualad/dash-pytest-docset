@@ -1,0 +1,125 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>pytest-2.6.3: fixes and little improvements &#8212; pytest documentation</title>
+    <link rel="stylesheet" href="../_static/basic.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="shortcut icon" href="../_static/pytest1favi.ico"/>
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="pytest-2.6.2: few fixes and cx_freeze support" href="release-2.6.2.html" />
+    <link rel="prev" title="pytest-2.7.0: fixes, features, speed improvements" href="release-2.7.0.html" />
+  </head><body>
+
+
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.6.2.html" title="pytest-2.6.2: few fixes and cx_freeze support"
+             accesskey="N">next</a></li>
+        <li class="right" >
+          <a href="release-2.7.0.html" title="pytest-2.7.0: fixes, features, speed improvements"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+          <div class="body" role="main">
+
+  <div class="section" id="pytest-2-6-3-fixes-and-little-improvements">
+<h1>pytest-2.6.3: fixes and little improvements<a class="headerlink" href="#pytest-2-6-3-fixes-and-little-improvements" title="Permalink to this headline">¶</a></h1>
+<p>pytest is a mature Python testing tool with more than a 1100 tests
+against itself, passing on many different interpreters and platforms.
+This release is drop-in compatible to 2.5.2 and 2.6.X.
+See below for the changes and see docs at:</p>
+<blockquote>
+<div><a class="reference external" href="http://pytest.org">http://pytest.org</a></div></blockquote>
+<p>As usual, you can upgrade from pypi via:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">-</span><span class="n">U</span> <span class="n">pytest</span>
+</pre></div>
+</div>
+<p>Thanks to all who contributed, among them:</p>
+<blockquote>
+<div>Floris Bruynooghe
+Oleg Sinyavskiy
+Uwe Schmitt
+Charles Cloud
+Wolfgang Schnerring</div></blockquote>
+<p>have fun,
+holger krekel</p>
+</div>
+<div class="section" id="changes-2-6-3">
+<h1>Changes 2.6.3<a class="headerlink" href="#changes-2-6-3" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li>fix issue575: xunit-xml was reporting collection errors as failures
+instead of errors, thanks Oleg Sinyavskiy.</li>
+<li>fix issue582: fix setuptools example, thanks Laszlo Papp and Ronny
+Pfannschmidt.</li>
+<li>Fix infinite recursion bug when pickling capture.EncodedFile, thanks
+Uwe Schmitt.</li>
+<li>fix issue589: fix bad interaction with numpy and others when showing
+exceptions.  Check for precise “maximum recursion depth exceed” exception
+instead of presuming any RuntimeError is that one (implemented in py
+dep).  Thanks Charles Cloud for analysing the issue.</li>
+<li>fix conftest related fixture visibility issue: when running with a
+CWD outside of a test package pytest would get fixture discovery wrong.
+Thanks to Wolfgang Schnerring for figuring out a reproducible example.</li>
+<li>Introduce pytest_enter_pdb hook (needed e.g. by pytest_timeout to cancel the
+timeout when interactively entering pdb).  Thanks Wolfgang Schnerring.</li>
+<li>check xfail/skip also with non-python function test items. Thanks
+Floris Bruynooghe.</li>
+</ul>
+</div>
+
+
+          </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="release-2.6.2.html" title="pytest-2.6.2: few fixes and cx_freeze support"
+             >next</a></li>
+        <li class="right" >
+          <a href="release-2.7.0.html" title="pytest-2.7.0: fixes, features, speed improvements"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../contents.html">pytest-3.10</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="index.html" >Release announcements</a> &#187;</li>
+      </ul>
+    </div>
+
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2015–2018 , holger krekel and pytest-dev team.
+      Created using <a href="http://sphinx-doc.org/">Sphinx</a> 1.8.5.
+    </div>
+<script type="text/javascript">
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-7597274-13']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+    var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+    ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+</script>
+
+  </body>
+</html>
